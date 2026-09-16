@@ -2,7 +2,7 @@ use crate::protos::message::*;
 use lazy_static::lazy_static;
 use serde_derive::Serialize;
 #[cfg(target_os = "windows")]
-use sha2::{Digest, Sha256};
+use hbb_common::sha2::{Digest, Sha256};
 #[cfg(target_os = "windows")]
 use std::path::Path;
 use std::sync::{Arc, Mutex};
