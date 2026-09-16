@@ -100,11 +100,7 @@ pub enum EventToUI {
 }
 
 #[cfg(feature = "flutter")]
-impl flutter_rust_bridge::rust2dart::IntoIntoDart<EventToUI> for EventToUI {
-    fn into_into_dart(self) -> EventToUI {
-        self
-    }
-}
+pub use crate::bridge_generated::*;
 
 pub fn host_stop_system_key_propagate(_stopped: bool) {
     #[cfg(windows)]
