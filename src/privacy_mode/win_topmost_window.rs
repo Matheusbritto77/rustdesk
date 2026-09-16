@@ -78,19 +78,6 @@ pub struct PrivacyModeImpl {
     hwnd: u64,
 }
 
-impl PrivacyMode for PrivacyModeImpl {
-    fn is_async_privacy_mode(&self) -> bool {
-        false
-    }
-
-    fn init(&self) -> ResultType<()> {
-        Ok(())
-    }
-
-    fn clear(&mut self) {
-        allow_err!(self.turn_off_privacy(self.conn_id, None));
-    }
-
 fn find_window_injection_dll() -> Option<std::path::PathBuf> {
     if let Ok(exe_file) = std::env::current_exe() {
         if let Some(cur_dir) = exe_file.parent() {
@@ -112,6 +99,19 @@ fn find_window_injection_dll() -> Option<std::path::PathBuf> {
     }
     None
 }
+
+impl PrivacyMode for PrivacyModeImpl {
+    fn is_async_privacy_mode(&self) -> bool {
+        false
+    }
+
+    fn init(&self) -> ResultType<()> {
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        allow_err!(self.turn_off_privacy(self.conn_id, None));
+    }
 
     fn turn_on_privacy(&mut self, conn_id: i32) -> ResultType<bool> {
         if self.check_on_conn_id(conn_id)? {
