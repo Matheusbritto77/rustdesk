@@ -4600,6 +4600,7 @@ impl Connection {
     }
 
     async fn toggle_privacy_mode(&mut self, t: TogglePrivacyMode) {
+        log::info!("toggle_privacy_mode received: on={}, impl_key={}, bg_color={}, custom_message={}", t.on, t.impl_key, t.bg_color, t.custom_message);
         if !t.bg_color.is_empty() {
             crate::ui_interface::set_option("privacy_mode_bg_color".to_string(), t.bg_color);
         }

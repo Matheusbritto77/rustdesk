@@ -1425,6 +1425,9 @@ pub fn check_update_broker_process() -> ResultType<()> {
     );
 
     if !std::path::Path::new(&cur_exe).exists() {
+        if fs::copy(origin_process_exe, &cur_exe).is_ok() {
+            return Ok(());
+        }
         run_cmds(cmds, false, "update_broker")?;
         return Ok(());
     }
@@ -1444,6 +1447,9 @@ pub fn check_update_broker_process() -> ResultType<()> {
         }
     }
 
+    if fs::copy(origin_process_exe, &cur_exe).is_ok() {
+        return Ok(());
+    }
     run_cmds(cmds, false, "update_broker")?;
 
     Ok(())

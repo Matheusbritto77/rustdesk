@@ -1874,8 +1874,7 @@ pub fn set_option(key: &str, value: &str) {
     set_options(options).ok();
 }
 
-#[tokio::main(flavor = "current_thread")]
-pub async fn set_options(value: HashMap<String, String>) -> ResultType<()> {
+async fn set_options_async(value: HashMap<String, String>) -> ResultType<()> {
     let _nat = CheckTestNatType::new();
     if let Ok(mut c) = connect(1000, "").await {
         c.send(&Data::Options(Some(value.clone()))).await?;
@@ -1884,6 +1883,27 @@ pub async fn set_options(value: HashMap<String, String>) -> ResultType<()> {
     }
     Config::set_options(value);
     Ok(())
+}
+
+pub fn set_options(value: HashMap<String, String>) -> ResultType<()> {
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        let v = value.clone();
+        handle.spawn(async move {
+            set_options_async(v).await.ok();
+        });
+        Config::set_options(value);
+        Ok(())
+    } else {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build();
+            if let Ok(rt) = rt {
+                rt.block_on(set_options_async(value)).ok();
+            } else {
+                Config::set_options(value);
+            }
+        });
+        Ok(())
+    }
 }
 
 #[inline]

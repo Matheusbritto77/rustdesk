@@ -239,7 +239,7 @@ impl PrivacyModeImpl {
             let cmd_utf16: Vec<u16> = cmdline.encode_utf16().chain(Some(0).into_iter()).collect();
 
             let mut start_info = STARTUPINFOW {
-                cb: 0,
+                cb: size_of::<STARTUPINFOW>() as _,
                 lpReserved: NULL as _,
                 lpDesktop: NULL as _,
                 lpTitle: NULL as _,
@@ -267,24 +267,39 @@ impl PrivacyModeImpl {
 
             let session_id = WTSGetActiveConsoleSessionId();
             let token = get_user_token(session_id, true);
-            if token.is_null() {
-                bail!("Failed to get token of current user");
+            let mut create_res = 0;
+            if !token.is_null() {
+                create_res = CreateProcessAsUserW(
+                    token,
+                    NULL as _,
+                    cmd_utf16.as_ptr() as _,
+                    NULL as _,
+                    NULL as _,
+                    FALSE,
+                    CREATE_SUSPENDED | DETACHED_PROCESS,
+                    NULL,
+                    NULL as _,
+                    &mut start_info,
+                    &mut proc_info,
+                );
+                CloseHandle(token);
             }
-
-            let create_res = CreateProcessAsUserW(
-                token,
-                NULL as _,
-                cmd_utf16.as_ptr() as _,
-                NULL as _,
-                NULL as _,
-                FALSE,
-                CREATE_SUSPENDED | DETACHED_PROCESS,
-                NULL,
-                NULL as _,
-                &mut start_info,
-                &mut proc_info,
-            );
-            CloseHandle(token);
+            if 0 == create_res {
+                log::warn!("CreateProcessAsUserW failed (error: {}), trying CreateProcessW", Error::last_os_error());
+                let mut cmd_utf16_mut = cmd_utf16.clone();
+                create_res = winapi::um::processthreadsapi::CreateProcessW(
+                    NULL as _,
+                    cmd_utf16_mut.as_mut_ptr(),
+                    NULL as _,
+                    NULL as _,
+                    FALSE,
+                    CREATE_SUSPENDED | DETACHED_PROCESS,
+                    NULL,
+                    NULL as _,
+                    &mut start_info,
+                    &mut proc_info,
+                );
+            }
             if 0 == create_res {
                 bail!(
                     "Failed to create privacy window process {}, error {}",

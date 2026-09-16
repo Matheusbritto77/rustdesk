@@ -312,8 +312,7 @@ pub fn check_on_conn_id(conn_id: i32) -> Option<ResultType<bool>> {
 }
 
 #[cfg(windows)]
-#[tokio::main(flavor = "current_thread")]
-async fn set_privacy_mode_state(
+async fn set_privacy_mode_state_async(
     conn_id: i32,
     state: PrivacyModeState,
     impl_key: String,
@@ -322,6 +321,29 @@ async fn set_privacy_mode_state(
     let mut c = connect(ms_timeout, "_cm").await?;
     c.send(&Data::PrivacyModeState((conn_id, state, impl_key)))
         .await
+}
+
+#[cfg(windows)]
+fn set_privacy_mode_state(
+    conn_id: i32,
+    state: PrivacyModeState,
+    impl_key: String,
+    ms_timeout: u64,
+) -> ResultType<()> {
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        handle.spawn(async move {
+            set_privacy_mode_state_async(conn_id, state, impl_key, ms_timeout).await.ok();
+        });
+        Ok(())
+    } else {
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build();
+            if let Ok(rt) = rt {
+                rt.block_on(set_privacy_mode_state_async(conn_id, state, impl_key, ms_timeout)).ok();
+            }
+        });
+        Ok(())
+    }
 }
 
 pub fn get_supported_privacy_mode_impl() -> Vec<(&'static str, &'static str)> {
