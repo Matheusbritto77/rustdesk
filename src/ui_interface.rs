@@ -166,10 +166,15 @@ pub fn get_option<T: AsRef<str>>(key: T) -> String {
     {
         let map = OPTIONS.lock().unwrap();
         if let Some(v) = map.get(key.as_ref()) {
-            v.to_owned()
-        } else {
-            "".to_owned()
+            if !v.is_empty() {
+                return v.to_owned();
+            }
         }
+        let local_v = hbb_common::config::LocalConfig::get_option(key.as_ref());
+        if !local_v.is_empty() {
+            return local_v;
+        }
+        "".to_owned()
     }
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {

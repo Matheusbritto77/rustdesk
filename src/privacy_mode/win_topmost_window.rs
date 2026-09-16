@@ -441,51 +441,71 @@ fn run_custom_privacy_painter(hwnds: Vec<usize>, running: Arc<AtomicBool>) {
         custom_msg
     };
 
-    let logo_data: Option<(i32, i32, Vec<u8>)> = if !logo_path.is_empty() {
+    // 1. Check in-memory logo first, then fall back to disk
+    let mem_logo = super::PRIVACY_MODE_LOGO_DATA.read().unwrap().clone();
+    let loaded_dyn_img = if !mem_logo.is_empty() {
+        match image::load_from_memory(&mem_logo) {
+            Ok(img) => {
+                log::info!("Successfully loaded logo from memory ({} bytes)", mem_logo.len());
+                Some(img)
+            }
+            Err(e) => {
+                log::warn!("Failed to load logo from memory: {}", e);
+                None
+            }
+        }
+    } else if !logo_path.is_empty() {
         match image::open(&logo_path) {
-            Ok(dyn_img) => {
-                let rgba = dyn_img.to_rgba8();
-                let (orig_w, orig_h) = rgba.dimensions();
-                if orig_w > 0 && orig_h > 0 {
-                    let max_w = 280.0f32;
-                    let max_h = 200.0f32;
-                    let scale = (max_w / orig_w as f32).min(max_h / orig_h as f32).min(1.0);
-                    let target_w = ((orig_w as f32 * scale).round() as u32).max(1);
-                    let target_h = ((orig_h as f32 * scale).round() as u32).max(1);
-
-                    let scaled_rgba = if target_w != orig_w || target_h != orig_h {
-                        image::imageops::resize(
-                            &rgba,
-                            target_w,
-                            target_h,
-                            image::imageops::FilterType::Triangle,
-                        )
-                    } else {
-                        rgba
-                    };
-
-                    let (w, h) = scaled_rgba.dimensions();
-                    let mut bgra = Vec::with_capacity((w * h * 4) as usize);
-                    for pixel in scaled_rgba.pixels() {
-                        let [r, g, b, a] = pixel.0;
-                        let a_f = a as f32 / 255.0;
-                        let r_out = ((r as f32 * a_f) + (bg_r as f32 * (1.0 - a_f))) as u8;
-                        let g_out = ((g as f32 * a_f) + (bg_g as f32 * (1.0 - a_f))) as u8;
-                        let b_out = ((b as f32 * a_f) + (bg_b as f32 * (1.0 - a_f))) as u8;
-                        bgra.push(b_out);
-                        bgra.push(g_out);
-                        bgra.push(r_out);
-                        bgra.push(255);
-                    }
-                    Some((w as i32, h as i32, bgra))
-                } else {
-                    None
-                }
+            Ok(img) => {
+                log::info!("Successfully loaded logo from disk {:?}", logo_path);
+                Some(img)
             }
             Err(e) => {
                 log::warn!("Failed to load privacy logo from {:?}: {}", logo_path, e);
                 None
             }
+        }
+    } else {
+        None
+    };
+
+    let logo_data: Option<(i32, i32, Vec<u8>)> = if let Some(dyn_img) = loaded_dyn_img {
+        let rgba = dyn_img.to_rgba8();
+        let (orig_w, orig_h) = rgba.dimensions();
+        if orig_w > 0 && orig_h > 0 {
+            let max_w = 280.0f32;
+            let max_h = 200.0f32;
+            let scale = (max_w / orig_w as f32).min(max_h / orig_h as f32).min(1.0);
+            let target_w = ((orig_w as f32 * scale).round() as u32).max(1);
+            let target_h = ((orig_h as f32 * scale).round() as u32).max(1);
+
+            let scaled_rgba = if target_w != orig_w || target_h != orig_h {
+                image::imageops::resize(
+                    &rgba,
+                    target_w,
+                    target_h,
+                    image::imageops::FilterType::Triangle,
+                )
+            } else {
+                rgba
+            };
+
+            let (w, h) = scaled_rgba.dimensions();
+            let mut bgra = Vec::with_capacity((w * h * 4) as usize);
+            for pixel in scaled_rgba.pixels() {
+                let [r, g, b, a] = pixel.0;
+                let a_f = a as f32 / 255.0;
+                let r_out = ((r as f32 * a_f) + (bg_r as f32 * (1.0 - a_f))) as u8;
+                let g_out = ((g as f32 * a_f) + (bg_g as f32 * (1.0 - a_f))) as u8;
+                let b_out = ((b as f32 * a_f) + (bg_b as f32 * (1.0 - a_f))) as u8;
+                bgra.push(b_out);
+                bgra.push(g_out);
+                bgra.push(r_out);
+                bgra.push(255);
+            }
+            Some((w as i32, h as i32, bgra))
+        } else {
+            None
         }
     } else {
         None

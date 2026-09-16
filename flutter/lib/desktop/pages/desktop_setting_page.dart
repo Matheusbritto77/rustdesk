@@ -3287,3 +3287,445 @@ void changeSocks5Proxy() async {
 }
 
 //#endregion
+
+class _PrivacyMode extends StatefulWidget {
+  const _PrivacyMode({Key? key}) : super(key: key);
+
+  @override
+  State<_PrivacyMode> createState() => _PrivacyModeState();
+}
+
+class _PrivacyModeState extends State<_PrivacyMode>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  final scrollController = ScrollController();
+
+  final TextEditingController _hexController = TextEditingController();
+  final TextEditingController _msgController = TextEditingController();
+
+  String _bgColorHex = '#18181B';
+  String _logoPath = '';
+  String _customMsg = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    _bgColorHex = bind.mainGetOptionSync(key: kOptionPrivacyModeBgColor);
+    if (_bgColorHex.isEmpty) {
+      _bgColorHex = '#18181B';
+    }
+    _hexController.text = _bgColorHex;
+
+    _logoPath = bind.mainGetOptionSync(key: kOptionPrivacyModeLogoPath);
+    if (_logoPath.isNotEmpty) {
+      try {
+        final f = File(_logoPath);
+        if (f.existsSync()) {
+          final bytes = f.readAsBytesSync();
+          bind.mainSetOption(key: 'privacy_mode_logo_base64', value: base64Encode(bytes));
+        }
+      } catch (e) {
+        debugPrint('Error caching logo in memory: $e');
+      }
+    }
+
+    _customMsg = bind.mainGetOptionSync(key: kOptionPrivacyModeCustomMessage);
+    if (_customMsg.isEmpty) {
+      _customMsg = 'Modo de Privacidade Ativo';
+    }
+    _msgController.text = _customMsg;
+  }
+
+  Future<void> _updateBgColor(String hex) async {
+    String cleanHex = hex.trim();
+    if (!cleanHex.startsWith('#')) {
+      cleanHex = '#$cleanHex';
+    }
+    setState(() {
+      _bgColorHex = cleanHex;
+      _hexController.text = cleanHex;
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeBgColor, value: cleanHex);
+  }
+
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null) {
+      final path = result.files.single.path!;
+      try {
+        final bytes = await File(path).readAsBytes();
+        await bind.mainSetOption(key: 'privacy_mode_logo_base64', value: base64Encode(bytes));
+      } catch (e) {
+        debugPrint('Error caching picked logo: $e');
+      }
+      setState(() {
+        _logoPath = path;
+      });
+      await bind.mainSetOption(key: kOptionPrivacyModeLogoPath, value: path);
+    }
+  }
+
+  Future<void> _removeLogo() async {
+    setState(() {
+      _logoPath = '';
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeLogoPath, value: '');
+    await bind.mainSetOption(key: 'privacy_mode_logo_base64', value: '');
+  }
+
+  Future<void> _updateCustomMsg(String msg) async {
+    setState(() {
+      _customMsg = msg;
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeCustomMessage, value: msg);
+  }
+
+  Color _parseColor(String hexStr) {
+    try {
+      String hex = hexStr.replaceAll('#', '');
+      if (hex.length == 6) {
+        hex = 'FF$hex';
+      }
+      return Color(int.parse(hex, radix: 16));
+    } catch (_) {
+      return Colors.black;
+    }
+  }
+
+  void _openColorPickerDialog() {
+    Color selectedColor = _parseColor(_bgColorHex);
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(translate('Selecionar Cor Personalizada')),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              color: selectedColor,
+              onColorChanged: (Color newColor) {
+                selectedColor = newColor;
+                final hex =
+                    '#${newColor.value.toRadixString(16).substring(2).toUpperCase()}';
+                _updateBgColor(hex);
+              },
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              spacing: 6,
+              runSpacing: 6,
+              wheelDiameter: 180,
+              heading: const SizedBox.shrink(),
+              subheading: Text(translate('Tonalidades Recomendadas'), style: const TextStyle(fontWeight: FontWeight.bold)),
+              wheelSubheading: Text(translate('Roda de Cores Customizada'), style: const TextStyle(fontWeight: FontWeight.bold)),
+              showColorCode: true,
+              colorCodeHasColor: true,
+              showMaterialName: false,
+              showColorName: false,
+              pickerTypeLabels: {
+                ColorPickerType.primary: translate('Paleta Base'),
+                ColorPickerType.accent: translate('Acentos'),
+                ColorPickerType.wheel: translate('Roda Livre'),
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(translate('Concluído'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final activeColor = _parseColor(_bgColorHex);
+
+    return SingleChildScrollView(
+      controller: scrollController,
+      child: Column(
+        children: [
+          _Card(
+            title: 'Cor do Fundo do Modo de Privacidade',
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Circular Round Color Picker Button
+                  Tooltip(
+                    message: translate('Clique para escolher a cor de fundo'),
+                    child: InkWell(
+                      onTap: _openColorPickerDialog,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: activeColor,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: activeColor.withOpacity(0.6),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.color_lens_rounded,
+                            size: 26,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        translate('Seletor de Cor Redondo'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: _openColorPickerDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white24, width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _bgColorHex.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.edit, size: 14, color: Colors.white70),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 12),
+            ],
+          ),
+          _Card(
+            title: 'Logo Personalizada',
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _pickLogo,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                        label: Text(translate('Upar Logo'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      if (_logoPath.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: _removeLogo,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                          label: Text(
+                            translate('Remover Logo'),
+                            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ).marginOnly(bottom: 12),
+                  if (_logoPath.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(Icons.image_outlined, size: 16, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${translate('Arquivo')}: $_logoPath',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      translate('Nenhuma logo selecionada. Usando ícone padrão.'),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+            ],
+          ),
+          _Card(
+            title: 'Mensagem no Modo de Privacidade',
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _msgController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      hintText: translate('Ex: Modo de Privacidade Ativo - Sessão Remota'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onChanged: _updateCustomMsg,
+                  ).marginOnly(bottom: 8),
+                  Text(
+                    translate('Esta mensagem será exibida na tela do dispositivo controlado durante o modo privado.'),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+            ],
+          ),
+          _Card(
+            title: 'Pré-Visualização ao Vivo',
+            children: [
+              Container(
+                width: double.infinity,
+                height: 220,
+                decoration: BoxDecoration(
+                  color: activeColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white24, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: activeColor.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Mock display frame bar
+                    Positioned(
+                      top: 10,
+                      left: 15,
+                      right: 15,
+                      child: Row(
+                        children: [
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.amberAccent, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
+                          const Spacer(),
+                          const Icon(Icons.lock_outline_rounded, size: 14, color: Colors.white54),
+                        ],
+                      ),
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 12),
+                          if (_logoPath.isNotEmpty && File(_logoPath).existsSync())
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                File(_logoPath),
+                                height: 70,
+                                fit: BoxFit.contain,
+                                errorBuilder: (ctx, err, stack) => const Icon(
+                                  Icons.shield_outlined,
+                                  size: 60,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.shield_outlined,
+                              size: 64,
+                              color: Colors.white70,
+                            ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              _customMsg.isNotEmpty
+                                  ? _customMsg
+                                  : translate('Modo de Privacidade Ativo'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            translate('A tela remota está protegida'),
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ).marginOnly(left: _kCheckBoxLeftMargin, right: 10, bottom: 10),
+            ],
+          ),
+        ],
+      ).marginOnly(bottom: _kListViewBottomMargin),
+    );
+  }
+}

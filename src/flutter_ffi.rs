@@ -1022,6 +1022,12 @@ pub fn main_set_option(key: String, value: String) {
         #[cfg(any(target_os = "android", target_os = "ios"))]
         crate::common::test_rendezvous_server();
     } else {
+        if key == "privacy_mode_logo_base64" {
+            if let Ok(bytes) = hbb_common::base64::decode(&value) {
+                log::info!("main_set_option: stored {} bytes in PRIVACY_MODE_LOGO_DATA", bytes.len());
+                *crate::privacy_mode::PRIVACY_MODE_LOGO_DATA.write().unwrap() = bytes;
+            }
+        }
         set_option(key, value.clone());
     }
 }
