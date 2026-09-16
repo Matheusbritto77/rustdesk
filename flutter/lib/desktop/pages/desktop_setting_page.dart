@@ -3481,7 +3481,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
             title: 'Logo Personalizada',
             children: [
               Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
@@ -3519,7 +3519,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
             title: 'Mensagem no Modo de Privacidade',
             children: [
               Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: _msgController,
