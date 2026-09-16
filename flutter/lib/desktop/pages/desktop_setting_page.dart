@@ -3321,16 +3321,6 @@ class _PrivacyModeState extends State<_PrivacyMode>
   String _logoPath = '';
   String _customMsg = '';
 
-  final List<Map<String, String>> _colorPresets = [
-    {'name': 'Grafite', 'hex': '#18181B'},
-    {'name': 'Preto', 'hex': '#000000'},
-    {'name': 'Azul Noturno', 'hex': '#0F172A'},
-    {'name': 'Roxo Neon', 'hex': '#1E1B4B'},
-    {'name': 'Verde Esmeralda', 'hex': '#064E3B'},
-    {'name': 'Azul Elétrico', 'hex': '#1E3A8A'},
-    {'name': 'Vinho Escuro', 'hex': '#450A0A'},
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -3464,126 +3454,63 @@ class _PrivacyModeState extends State<_PrivacyMode>
           _Card(
             title: 'Cor do Fundo do Modo de Privacidade',
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      ..._colorPresets.map((preset) {
-                        final isSelected =
-                            _bgColorHex.toLowerCase() == preset['hex']!.toLowerCase();
-                        final color = _parseColor(preset['hex']!);
-                        return InkWell(
-                          onTap: () => _updateBgColor(preset['hex']!),
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected ? MyTheme.accent : Colors.white24,
-                                width: isSelected ? 2.5 : 1,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: MyTheme.accent.withOpacity(0.4),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      )
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 14,
-                                  height: 14,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: color,
-                                    border: Border.all(color: Colors.white, width: 1.5),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  translate(preset['name']!),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                if (isSelected) ...[
-                                  const SizedBox(width: 6),
-                                  const Icon(Icons.check, size: 16, color: Colors.white),
-                                ],
-                              ],
-                            ),
+                  // Circular Round Color Picker Button
+                  Tooltip(
+                    message: translate('Clique para escolher a cor de fundo'),
+                    child: InkWell(
+                      onTap: _openColorPickerDialog,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: activeColor,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 3,
                           ),
-                        );
-                      }),
-                      // Modern Custom Color Selector Button with Color Wheel Icon
-                      InkWell(
-                        onTap: _openColorPickerDialog,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                MyTheme.accent.withOpacity(0.8),
-                                Colors.purpleAccent.withOpacity(0.8),
-                              ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: activeColor.withOpacity(0.6),
+                              blurRadius: 12,
+                              spreadRadius: 2,
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white30, width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.purple.withOpacity(0.3),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.color_lens_rounded, size: 18, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Text(
-                                translate('Seletor de Cores'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.color_lens_rounded,
+                            size: 26,
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    ],
-                  ).marginOnly(bottom: 14),
-
-                  // Display active hex color indicator with option to open dialog or edit
-                  Row(
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${translate('Cor Atual')}: ',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                        translate('Seletor de Cor Redondo'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
+                      const SizedBox(height: 6),
                       GestureDetector(
                         onTap: _openColorPickerDialog,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: activeColor,
+                            color: Colors.black26,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white30, width: 1.5),
+                            border: Border.all(color: Colors.white24, width: 1),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -3598,7 +3525,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Icon(Icons.palette_outlined, size: 16, color: Colors.white),
+                              const Icon(Icons.edit, size: 14, color: Colors.white70),
                             ],
                           ),
                         ),
@@ -3606,7 +3533,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
                     ],
                   ),
                 ],
-              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+              ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 12),
             ],
           ),
           _Card(
