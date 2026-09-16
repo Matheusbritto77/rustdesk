@@ -91,22 +91,36 @@ impl PrivacyMode for PrivacyModeImpl {
         allow_err!(self.turn_off_privacy(self.conn_id, None));
     }
 
+fn find_window_injection_dll() -> Option<std::path::PathBuf> {
+    if let Ok(exe_file) = std::env::current_exe() {
+        if let Some(cur_dir) = exe_file.parent() {
+            let p = cur_dir.join("WindowInjection.dll");
+            if p.exists() {
+                return Some(p);
+            }
+        }
+    }
+    if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+        let p = std::path::Path::new(&appdata).join("rustdesk").join("WindowInjection.dll");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    let p = std::path::Path::new(r"C:\Program Files\RustDesk\WindowInjection.dll");
+    if p.exists() {
+        return Some(p.to_path_buf());
+    }
+    None
+}
+
     fn turn_on_privacy(&mut self, conn_id: i32) -> ResultType<bool> {
         if self.check_on_conn_id(conn_id)? {
             log::debug!("Privacy mode of conn {} is already on", conn_id);
             return Ok(true);
         }
 
-        let exe_file = std::env::current_exe()?;
-        if let Some(cur_dir) = exe_file.parent() {
-            if !cur_dir.join("WindowInjection.dll").exists() {
-                bail!("WindowInjection.dll is missing");
-            }
-        } else {
-            bail!(
-                "Invalid exe parent for {}",
-                exe_file.to_string_lossy().as_ref()
-            );
+        if find_window_injection_dll().is_none() {
+            bail!("WindowInjection.dll is missing");
         }
 
         let should_start_broker = self.handlers.is_default();
@@ -206,13 +220,9 @@ impl PrivacyModeImpl {
             bail!("Cannot get parent of current exe file");
         };
 
-        let dll_file = cur_dir.join("WindowInjection.dll");
-        if !dll_file.exists() {
-            bail!(
-                "Failed to find required file {}",
-                dll_file.to_string_lossy().as_ref()
-            );
-        }
+        let Some(dll_file) = find_window_injection_dll() else {
+            bail!("Failed to find required file WindowInjection.dll");
+        };
 
         if wait_find_privacy_hwnds(PRIVACY_WINDOW_WAIT_MILLIS).is_ok() {
             log::info!("Privacy window is ready");

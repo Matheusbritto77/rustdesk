@@ -92,14 +92,10 @@ lazy_static::lazy_static! {
     pub static ref DEFAULT_PRIVACY_MODE_IMPL: String = {
         #[cfg(windows)]
         {
-            let has_dll = std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|parent| parent.join("WindowInjection.dll").exists()))
-                .unwrap_or(false);
-            if has_dll && win_exclude_from_capture::is_supported() {
+            if win_exclude_from_capture::is_supported() {
                 PRIVACY_MODE_IMPL_WIN_EXCLUDE_FROM_CAPTURE
             } else {
-                if has_dll && display_service::is_privacy_mode_mag_supported() {
+                if display_service::is_privacy_mode_mag_supported() {
                     PRIVACY_MODE_IMPL_WIN_MAG
                 } else {
                     if is_installed() {
@@ -332,18 +328,14 @@ pub fn get_supported_privacy_mode_impl() -> Vec<(&'static str, &'static str)> {
     #[cfg(target_os = "windows")]
     {
         let mut vec_impls = Vec::new();
-        let has_dll = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|parent| parent.join("WindowInjection.dll").exists()))
-            .unwrap_or(false);
 
-        if has_dll && win_exclude_from_capture::is_supported() {
+        if win_exclude_from_capture::is_supported() {
             vec_impls.push((
                 PRIVACY_MODE_IMPL_WIN_EXCLUDE_FROM_CAPTURE,
                 "privacy_mode_impl_mag_tip",
             ));
         } else {
-            if has_dll && display_service::is_privacy_mode_mag_supported() {
+            if display_service::is_privacy_mode_mag_supported() {
                 vec_impls.push((PRIVACY_MODE_IMPL_WIN_MAG, "privacy_mode_impl_mag_tip"));
             }
         }
