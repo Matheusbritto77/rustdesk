@@ -99,6 +99,13 @@ pub enum EventToUI {
     Texture(usize, bool), // (display, gpu_texture)
 }
 
+#[cfg(feature = "flutter")]
+impl flutter_rust_bridge::rust2dart::IntoIntoDart<EventToUI> for EventToUI {
+    fn into_into_dart(self) -> EventToUI {
+        self
+    }
+}
+
 pub fn host_stop_system_key_propagate(_stopped: bool) {
     #[cfg(windows)]
     crate::platform::windows::stop_system_key_propagate(_stopped);
