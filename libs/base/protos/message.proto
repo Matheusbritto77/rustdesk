@@ -621,6 +621,8 @@ message ToggleVirtualDisplay {
 message TogglePrivacyMode {
   string impl_key = 1;
   bool on = 2;
+  string bg_color = 3;
+  string custom_message = 4;
 }
 
 message PermissionInfo {
