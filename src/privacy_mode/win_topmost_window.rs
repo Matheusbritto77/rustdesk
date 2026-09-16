@@ -100,7 +100,7 @@ impl PrivacyMode for PrivacyModeImpl {
         let exe_file = std::env::current_exe()?;
         if let Some(cur_dir) = exe_file.parent() {
             if !cur_dir.join("WindowInjection.dll").exists() {
-                return Ok(false);
+                bail!("WindowInjection.dll is missing");
             }
         } else {
             bail!(
