@@ -50,6 +50,10 @@ pub enum PrivacyModeState {
     OffUnknown,
 }
 
+lazy_static::lazy_static! {
+    pub static ref PRIVACY_MODE_LOGO_DATA: Arc<std::sync::RwLock<Vec<u8>>> = Arc::new(std::sync::RwLock::new(Vec::new()));
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct PrivacyCustomization {
     pub is_custom: bool,
@@ -60,15 +64,58 @@ pub struct PrivacyCustomization {
 
 impl PrivacyCustomization {
     pub fn load_from_local() -> Self {
-        let bg_color = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
-        let custom_message = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
-        let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
+        let mut bg_color = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
+        if bg_color.is_empty() {
+            bg_color = hbb_common::config::LocalConfig::get_option("privacy_mode_bg_color");
+        }
 
-        let logo_data = if !logo_path.is_empty() {
-            std::fs::read(&logo_path).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        let mut custom_message = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+        if custom_message.is_empty() {
+            custom_message = hbb_common::config::LocalConfig::get_option("privacy_mode_custom_message");
+        }
+
+        let mut logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
+        if logo_path.is_empty() {
+            logo_path = hbb_common::config::LocalConfig::get_option("privacy_mode_logo_path");
+        }
+
+        // 1. Check in-memory logo data
+        let mut logo_data = PRIVACY_MODE_LOGO_DATA.read().unwrap().clone();
+
+        // 2. If memory is empty, try base64 option
+        if logo_data.is_empty() {
+            let mut b64 = crate::ui_interface::get_option("privacy_mode_logo_base64".to_string());
+            if b64.is_empty() {
+                b64 = hbb_common::config::LocalConfig::get_option("privacy_mode_logo_base64");
+            }
+            if !b64.is_empty() {
+                if let Ok(bytes) = hbb_common::base64::decode(&b64) {
+                    *PRIVACY_MODE_LOGO_DATA.write().unwrap() = bytes.clone();
+                    logo_data = bytes;
+                }
+            }
+        }
+
+        // 3. If still empty, read from logo_path file on disk
+        if logo_data.is_empty() && !logo_path.is_empty() {
+            // Also test without '/Volumes/Macintosh HD' if present
+            let path_candidates = vec![
+                std::path::PathBuf::from(&logo_path),
+                if logo_path.starts_with("/Volumes/Macintosh HD/") {
+                    std::path::PathBuf::from(logo_path.trim_start_matches("/Volumes/Macintosh HD"))
+                } else {
+                    std::path::PathBuf::from(&logo_path)
+                },
+            ];
+            for p in path_candidates {
+                if let Ok(bytes) = std::fs::read(&p) {
+                    hbb_common::log::info!("Loaded {} bytes from logo path {:?}", bytes.len(), p);
+                    *PRIVACY_MODE_LOGO_DATA.write().unwrap() = bytes.clone();
+                    logo_data = bytes;
+                    break;
+                }
+            }
+        }
 
         let is_custom = !logo_data.is_empty()
             || (!custom_message.is_empty() && custom_message != "Modo de Privacidade Ativo")
@@ -87,24 +134,38 @@ impl PrivacyCustomization {
             "privacy_mode_is_custom".to_string(),
             if self.is_custom { "Y" } else { "N" }.to_string(),
         );
+        hbb_common::config::LocalConfig::set_option(
+            "privacy_mode_is_custom".to_string(),
+            if self.is_custom { "Y" } else { "N" }.to_string(),
+        );
+
         if !self.bg_color.is_empty() {
             crate::ui_interface::set_option("privacy_mode_bg_color".to_string(), self.bg_color.clone());
+            hbb_common::config::LocalConfig::set_option("privacy_mode_bg_color".to_string(), self.bg_color.clone());
         }
         if !self.custom_message.is_empty() {
             crate::ui_interface::set_option("privacy_mode_custom_message".to_string(), self.custom_message.clone());
+            hbb_common::config::LocalConfig::set_option("privacy_mode_custom_message".to_string(), self.custom_message.clone());
         }
         if !self.logo_data.is_empty() {
+            *PRIVACY_MODE_LOGO_DATA.write().unwrap() = self.logo_data.clone();
+            hbb_common::log::info!("Stored privacy mode logo in memory ({} bytes)", self.logo_data.len());
+
             let logo_path = hbb_common::config::Config::path("privacy_mode_logo.png");
             if let Ok(_) = std::fs::write(&logo_path, &self.logo_data) {
-                hbb_common::log::info!("Saved custom privacy mode logo to {:?}", logo_path);
+                hbb_common::log::info!("Saved custom privacy mode logo to disk {:?}", logo_path);
                 crate::ui_interface::set_option("privacy_mode_logo_path".to_string(), logo_path.to_string_lossy().to_string());
+                hbb_common::config::LocalConfig::set_option("privacy_mode_logo_path".to_string(), logo_path.to_string_lossy().to_string());
             }
         }
     }
 
     pub fn is_custom_configured() -> bool {
+        if !PRIVACY_MODE_LOGO_DATA.read().unwrap().is_empty() {
+            return true;
+        }
         let is_custom_opt = crate::ui_interface::get_option("privacy_mode_is_custom".to_string());
-        if is_custom_opt == "Y" {
+        if is_custom_opt == "Y" || hbb_common::config::LocalConfig::get_option("privacy_mode_is_custom") == "Y" {
             return true;
         }
         let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());

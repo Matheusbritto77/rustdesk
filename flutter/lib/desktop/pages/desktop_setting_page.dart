@@ -3335,6 +3335,17 @@ class _PrivacyModeState extends State<_PrivacyMode>
     _hexController.text = _bgColorHex;
 
     _logoPath = bind.mainGetOptionSync(key: kOptionPrivacyModeLogoPath);
+    if (_logoPath.isNotEmpty) {
+      try {
+        final f = File(_logoPath);
+        if (f.existsSync()) {
+          final bytes = f.readAsBytesSync();
+          bind.mainSetOption(key: 'privacy_mode_logo_base64', value: base64Encode(bytes));
+        }
+      } catch (e) {
+        debugPrint('Error caching logo in memory: $e');
+      }
+    }
 
     _customMsg = bind.mainGetOptionSync(key: kOptionPrivacyModeCustomMessage);
     if (_customMsg.isEmpty) {
@@ -3362,6 +3373,12 @@ class _PrivacyModeState extends State<_PrivacyMode>
     );
     if (result != null && result.files.single.path != null) {
       final path = result.files.single.path!;
+      try {
+        final bytes = await File(path).readAsBytes();
+        await bind.mainSetOption(key: 'privacy_mode_logo_base64', value: base64Encode(bytes));
+      } catch (e) {
+        debugPrint('Error caching picked logo: $e');
+      }
       setState(() {
         _logoPath = path;
       });
@@ -3374,6 +3391,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
       _logoPath = '';
     });
     await bind.mainSetOption(key: kOptionPrivacyModeLogoPath, value: '');
+    await bind.mainSetOption(key: 'privacy_mode_logo_base64', value: '');
   }
 
   Future<void> _updateCustomMsg(String msg) async {
