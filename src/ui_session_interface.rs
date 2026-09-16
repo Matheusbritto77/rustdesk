@@ -393,14 +393,15 @@ impl<T: InvokeUiSession> Session<T> {
     }
 
     pub fn toggle_privacy_mode(&self, impl_key: String, on: bool) {
-        let bg_color = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
-        let custom_message = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+        let custom = crate::privacy_mode::PrivacyCustomization::load_from_local();
         let mut misc = Misc::new();
         misc.set_toggle_privacy_mode(TogglePrivacyMode {
             impl_key,
             on,
-            bg_color,
-            custom_message,
+            bg_color: custom.bg_color,
+            custom_message: custom.custom_message,
+            logo_data: custom.logo_data.into(),
+            is_custom: custom.is_custom,
             ..Default::default()
         });
         let mut msg_out = Message::new();

@@ -5,6 +5,10 @@ use std::{
     ffi::CString,
     io::Error,
     mem::size_of,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 use winapi::{
@@ -22,6 +26,13 @@ use winapi::{
             PROCESS_INFORMATION, STARTUPINFOW,
         },
         winbase::{WTSGetActiveConsoleSessionId, CREATE_SUSPENDED, DETACHED_PROCESS},
+        wingdi::{
+            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CLEARTYPE_QUALITY, CLIP_DEFAULT_PRECIS,
+            CreateCompatibleBitmap, CreateCompatibleDC, CreateFontW, CreateSolidBrush,
+            DEFAULT_CHARSET, DEFAULT_PITCH, DeleteDC, DeleteObject, DIB_RGB_COLORS, FW_BOLD,
+            FW_LIGHT, FW_NORMAL, OUT_DEFAULT_PRECIS, RGBQUAD, SRCCOPY, SelectObject, SetBkMode,
+            SetTextColor, StretchDIBits, BitBlt, TRANSPARENT,
+        },
         winnt::{MEM_COMMIT, PAGE_READWRITE},
         winuser::*,
     },
@@ -76,6 +87,7 @@ pub struct PrivacyModeImpl {
     conn_id: i32,
     handlers: WindowHandlers,
     hwnd: u64,
+    painter_running: Arc<AtomicBool>,
 }
 
 fn find_window_injection_dll() -> Option<std::path::PathBuf> {
@@ -142,6 +154,7 @@ impl PrivacyMode for PrivacyModeImpl {
         conn_id: i32,
         state: Option<PrivacyModeState>,
     ) -> ResultType<()> {
+        self.stop_painter();
         self.check_off_conn_id(conn_id)?;
         super::win_input::unhook()?;
         let hwnds = find_privacy_hwnds()?;
@@ -194,6 +207,7 @@ impl PrivacyModeImpl {
                 hprocess: 0,
             },
             hwnd: 0,
+            painter_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -344,6 +358,7 @@ impl PrivacyModeImpl {
 
     #[inline]
     pub fn stop(&mut self) {
+        self.stop_painter();
         self.handlers.reset();
     }
 
@@ -378,6 +393,7 @@ impl PrivacyModeImpl {
                 };
                 self.conn_id = conn_id;
                 self.hwnd = *hwnd as _;
+                self.start_painter(visible_hwnds);
                 Ok(())
             }
             Err(e) => {
@@ -389,14 +405,346 @@ impl PrivacyModeImpl {
             }
         }
     }
+
+    fn start_painter(&self, hwnds: Vec<HWND>) {
+        if !super::PrivacyCustomization::is_custom_configured() {
+            log::info!("Privacy mode is not customized, skipping custom screen painter");
+            return;
+        }
+
+        self.painter_running.store(true, Ordering::SeqCst);
+        let painter_running = self.painter_running.clone();
+
+        std::thread::spawn(move || {
+            log::info!(
+                "Started custom privacy painter thread for {} monitors/hwnds",
+                hwnds.len()
+            );
+            run_custom_privacy_painter(hwnds, painter_running);
+            log::info!("Custom privacy painter thread stopped");
+        });
+    }
+
+    fn stop_painter(&self) {
+        self.painter_running.store(false, Ordering::SeqCst);
+    }
 }
 
 impl Drop for PrivacyModeImpl {
     fn drop(&mut self) {
+        self.stop_painter();
         if self.conn_id != INVALID_PRIVACY_MODE_CONN_ID {
             allow_err!(self.turn_off_privacy(self.conn_id, None));
         }
     }
+}
+
+fn parse_hex_color(hex_str: &str) -> (u8, u8, u8, u32) {
+    let clean = hex_str.trim().trim_start_matches('#');
+    let (r, g, b) = if clean.len() == 6 {
+        let r = u8::from_str_radix(&clean[0..2], 16).unwrap_or(24);
+        let g = u8::from_str_radix(&clean[2..4], 16).unwrap_or(24);
+        let b = u8::from_str_radix(&clean[4..6], 16).unwrap_or(27);
+        (r, g, b)
+    } else {
+        (24, 24, 27) // Default sleek dark #18181B
+    };
+    let colorref = (r as u32) | ((g as u32) << 8) | ((b as u32) << 16);
+    (r, g, b, colorref)
+}
+
+fn run_custom_privacy_painter(hwnds: Vec<HWND>, running: Arc<AtomicBool>) {
+    let bg_color_hex = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
+    let custom_msg = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+    let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
+
+    let (bg_r, bg_g, bg_b, bg_colorref) = parse_hex_color(&bg_color_hex);
+    let title_text = if custom_msg.trim().is_empty() {
+        "Modo de Privacidade Ativo".to_string()
+    } else {
+        custom_msg
+    };
+
+    let logo_data: Option<(i32, i32, Vec<u8>)> = if !logo_path.is_empty() {
+        match image::open(&logo_path) {
+            Ok(dyn_img) => {
+                let rgba = dyn_img.to_rgba8();
+                let (orig_w, orig_h) = rgba.dimensions();
+                if orig_w > 0 && orig_h > 0 {
+                    let max_w = 280.0f32;
+                    let max_h = 200.0f32;
+                    let scale = (max_w / orig_w as f32).min(max_h / orig_h as f32).min(1.0);
+                    let target_w = ((orig_w as f32 * scale).round() as u32).max(1);
+                    let target_h = ((orig_h as f32 * scale).round() as u32).max(1);
+
+                    let scaled_rgba = if target_w != orig_w || target_h != orig_h {
+                        image::imageops::resize(
+                            &rgba,
+                            target_w,
+                            target_h,
+                            image::imageops::FilterType::Triangle,
+                        )
+                    } else {
+                        rgba
+                    };
+
+                    let (w, h) = scaled_rgba.dimensions();
+                    let mut bgra = Vec::with_capacity((w * h * 4) as usize);
+                    for pixel in scaled_rgba.pixels() {
+                        let [r, g, b, a] = pixel.0;
+                        let a_f = a as f32 / 255.0;
+                        let r_out = ((r as f32 * a_f) + (bg_r as f32 * (1.0 - a_f))) as u8;
+                        let g_out = ((g as f32 * a_f) + (bg_g as f32 * (1.0 - a_f))) as u8;
+                        let b_out = ((b as f32 * a_f) + (bg_b as f32 * (1.0 - a_f))) as u8;
+                        bgra.push(b_out);
+                        bgra.push(g_out);
+                        bgra.push(r_out);
+                        bgra.push(255);
+                    }
+                    Some((w as i32, h as i32, bgra))
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                log::warn!("Failed to load privacy logo from {:?}: {}", logo_path, e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    while running.load(Ordering::SeqCst) {
+        for &hwnd in &hwnds {
+            unsafe {
+                if FALSE != IsWindowVisible(hwnd) {
+                    paint_single_window(hwnd, bg_colorref, logo_data.as_ref(), &title_text);
+                }
+            }
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+unsafe fn paint_single_window(
+    hwnd: HWND,
+    bg_colorref: u32,
+    logo_data: Option<&(i32, i32, Vec<u8>)>,
+    title_text: &str,
+) {
+    let hdc = GetDC(hwnd);
+    if hdc.is_null() {
+        return;
+    }
+
+    let mut rc = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if FALSE == GetClientRect(hwnd, &mut rc) {
+        ReleaseDC(hwnd, hdc);
+        return;
+    }
+    let width = rc.right - rc.left;
+    let height = rc.bottom - rc.top;
+    if width <= 0 || height <= 0 {
+        ReleaseDC(hwnd, hdc);
+        return;
+    }
+
+    let mem_dc = CreateCompatibleDC(hdc);
+    if mem_dc.is_null() {
+        ReleaseDC(hwnd, hdc);
+        return;
+    }
+
+    let mem_bmp = CreateCompatibleBitmap(hdc, width, height);
+    if mem_bmp.is_null() {
+        DeleteDC(mem_dc);
+        ReleaseDC(hwnd, hdc);
+        return;
+    }
+
+    let old_bmp = SelectObject(mem_dc, mem_bmp as _);
+
+    // 1. Draw solid background
+    let bg_brush = CreateSolidBrush(bg_colorref);
+    FillRect(mem_dc, &rc, bg_brush);
+    DeleteObject(bg_brush as _);
+
+    SetBkMode(mem_dc, TRANSPARENT as _);
+
+    let center_y = height / 2;
+    let mut current_y = center_y - 120;
+
+    // 2. Draw logo if available
+    if let Some((lw, lh, bgra)) = logo_data {
+        let draw_x = (width - lw) / 2;
+        let draw_y = current_y - lh / 2;
+        current_y += lh / 2 + 30;
+
+        let mut bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: size_of::<BITMAPINFOHEADER>() as _,
+                biWidth: *lw,
+                biHeight: -(*lh),
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [RGBQUAD {
+                rgbBlue: 0,
+                rgbGreen: 0,
+                rgbRed: 0,
+                rgbReserved: 0,
+            }; 1],
+        };
+
+        StretchDIBits(
+            mem_dc,
+            draw_x,
+            draw_y,
+            *lw,
+            *lh,
+            0,
+            0,
+            *lw,
+            *lh,
+            bgra.as_ptr() as _,
+            &bmi,
+            DIB_RGB_COLORS,
+            SRCCOPY,
+        );
+    } else {
+        current_y = center_y - 60;
+    }
+
+    // 3. Draw Title (Custom Message)
+    let font_family: Vec<u16> = "Segoe UI\0".encode_utf16().collect();
+    let title_font = CreateFontW(
+        40,
+        0,
+        0,
+        0,
+        FW_BOLD as _,
+        0,
+        0,
+        0,
+        DEFAULT_CHARSET as _,
+        OUT_DEFAULT_PRECIS as _,
+        CLIP_DEFAULT_PRECIS as _,
+        CLEARTYPE_QUALITY as _,
+        DEFAULT_PITCH as _,
+        font_family.as_ptr(),
+    );
+    let old_font = SelectObject(mem_dc, title_font as _);
+    SetTextColor(mem_dc, 0x00FFFFFF);
+
+    let title_utf16: Vec<u16> = title_text.encode_utf16().collect();
+    let mut title_rc = RECT {
+        left: 40,
+        top: current_y,
+        right: width - 40,
+        bottom: current_y + 100,
+    };
+    DrawTextW(
+        mem_dc,
+        title_utf16.as_ptr(),
+        title_utf16.len() as _,
+        &mut title_rc,
+        DT_CENTER | DT_WORDBREAK | DT_NOPREFIX,
+    );
+
+    // 4. Draw Subtitle
+    let sub_font = CreateFontW(
+        22,
+        0,
+        0,
+        0,
+        FW_NORMAL as _,
+        0,
+        0,
+        0,
+        DEFAULT_CHARSET as _,
+        OUT_DEFAULT_PRECIS as _,
+        CLIP_DEFAULT_PRECIS as _,
+        CLEARTYPE_QUALITY as _,
+        DEFAULT_PITCH as _,
+        font_family.as_ptr(),
+    );
+    SelectObject(mem_dc, sub_font as _);
+    SetTextColor(mem_dc, 0x00CBD5E1);
+
+    let sub_text = "A tela remota está protegida para garantir sua privacidade.";
+    let sub_utf16: Vec<u16> = sub_text.encode_utf16().collect();
+    let mut sub_rc = RECT {
+        left: 40,
+        top: title_rc.bottom + 10,
+        right: width - 40,
+        bottom: title_rc.bottom + 60,
+    };
+    DrawTextW(
+        mem_dc,
+        sub_utf16.as_ptr(),
+        sub_utf16.len() as _,
+        &mut sub_rc,
+        DT_CENTER | DT_WORDBREAK | DT_NOPREFIX,
+    );
+
+    // 5. Draw Footer Tip
+    let tip_font = CreateFontW(
+        16,
+        0,
+        0,
+        0,
+        FW_LIGHT as _,
+        0,
+        0,
+        0,
+        DEFAULT_CHARSET as _,
+        OUT_DEFAULT_PRECIS as _,
+        CLIP_DEFAULT_PRECIS as _,
+        CLEARTYPE_QUALITY as _,
+        DEFAULT_PITCH as _,
+        font_family.as_ptr(),
+    );
+    SelectObject(mem_dc, tip_font as _);
+    SetTextColor(mem_dc, 0x0094A3B8);
+
+    let tip_text = "Pressione Ctrl + P para desbloquear a tela localmente";
+    let tip_utf16: Vec<u16> = tip_text.encode_utf16().collect();
+    let mut tip_rc = RECT {
+        left: 40,
+        top: height - 60,
+        right: width - 40,
+        bottom: height - 20,
+    };
+    DrawTextW(
+        mem_dc,
+        tip_utf16.as_ptr(),
+        tip_utf16.len() as _,
+        &mut tip_rc,
+        DT_CENTER | DT_SINGLELINE | DT_NOPREFIX,
+    );
+
+    BitBlt(hdc, 0, 0, width, height, mem_dc, 0, 0, SRCCOPY);
+
+    SelectObject(mem_dc, old_font);
+    DeleteObject(title_font as _);
+    DeleteObject(sub_font as _);
+    DeleteObject(tip_font as _);
+    SelectObject(mem_dc, old_bmp);
+    DeleteObject(mem_bmp as _);
+    DeleteDC(mem_dc);
+    ReleaseDC(hwnd, hdc);
 }
 
 unsafe fn inject_dll<'a>(hproc: HANDLE, hthread: HANDLE, dll_file: &'a str) -> ResultType<()> {

@@ -4600,16 +4600,27 @@ impl Connection {
     }
 
     async fn toggle_privacy_mode(&mut self, t: TogglePrivacyMode) {
-        log::info!("toggle_privacy_mode received: on={}, impl_key={}, bg_color={}, custom_message={}", t.on, t.impl_key, t.bg_color, t.custom_message);
-        if !t.bg_color.is_empty() {
-            crate::ui_interface::set_option("privacy_mode_bg_color".to_string(), t.bg_color);
-        }
-        if !t.custom_message.is_empty() {
-            crate::ui_interface::set_option("privacy_mode_custom_message".to_string(), t.custom_message);
+        log::info!(
+            "toggle_privacy_mode received: on={}, is_custom={}, impl_key={}, bg_color={}, custom_message={}, logo_len={}",
+            t.on,
+            t.is_custom,
+            t.impl_key,
+            t.bg_color,
+            t.custom_message,
+            t.logo_data.len()
+        );
+        let custom = crate::privacy_mode::PrivacyCustomization {
+            is_custom: t.is_custom || !t.bg_color.is_empty() || !t.custom_message.is_empty() || !t.logo_data.is_empty(),
+            bg_color: t.bg_color,
+            custom_message: t.custom_message,
+            logo_data: t.logo_data.to_vec(),
+        };
+        if custom.is_custom {
+            custom.save_to_local();
         }
         if t.on {
             self.turn_on_privacy(t.impl_key).await;
-        } else {
+        } else if privacy_mode::is_in_privacy_mode() {
             self.turn_off_privacy(t.impl_key).await;
         }
     }

@@ -50,6 +50,79 @@ pub enum PrivacyModeState {
     OffUnknown,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct PrivacyCustomization {
+    pub is_custom: bool,
+    pub bg_color: String,
+    pub custom_message: String,
+    pub logo_data: Vec<u8>,
+}
+
+impl PrivacyCustomization {
+    pub fn load_from_local() -> Self {
+        let bg_color = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
+        let custom_message = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+        let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
+
+        let logo_data = if !logo_path.is_empty() {
+            std::fs::read(&logo_path).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        let is_custom = !logo_data.is_empty()
+            || (!custom_message.is_empty() && custom_message != "Modo de Privacidade Ativo")
+            || (!bg_color.is_empty() && bg_color != "#000000");
+
+        Self {
+            is_custom: is_custom || !logo_data.is_empty(),
+            bg_color,
+            custom_message,
+            logo_data,
+        }
+    }
+
+    pub fn save_to_local(&self) {
+        crate::ui_interface::set_option(
+            "privacy_mode_is_custom".to_string(),
+            if self.is_custom { "Y" } else { "N" }.to_string(),
+        );
+        if !self.bg_color.is_empty() {
+            crate::ui_interface::set_option("privacy_mode_bg_color".to_string(), self.bg_color.clone());
+        }
+        if !self.custom_message.is_empty() {
+            crate::ui_interface::set_option("privacy_mode_custom_message".to_string(), self.custom_message.clone());
+        }
+        if !self.logo_data.is_empty() {
+            let logo_path = hbb_common::config::Config::path("privacy_mode_logo.png");
+            if let Ok(_) = std::fs::write(&logo_path, &self.logo_data) {
+                hbb_common::log::info!("Saved custom privacy mode logo to {:?}", logo_path);
+                crate::ui_interface::set_option("privacy_mode_logo_path".to_string(), logo_path.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    pub fn is_custom_configured() -> bool {
+        let is_custom_opt = crate::ui_interface::get_option("privacy_mode_is_custom".to_string());
+        if is_custom_opt == "Y" {
+            return true;
+        }
+        let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
+        if !logo_path.is_empty() && std::path::Path::new(&logo_path).exists() {
+            return true;
+        }
+        let msg = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+        if !msg.is_empty() && msg != "Modo de Privacidade Ativo" {
+            return true;
+        }
+        let bg = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
+        if !bg.is_empty() && bg != "#000000" && bg != "#18181B" {
+            return true;
+        }
+        false
+    }
+}
+
 pub trait PrivacyMode: Sync + Send {
     fn is_async_privacy_mode(&self) -> bool;
 

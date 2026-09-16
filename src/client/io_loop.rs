@@ -1198,23 +1198,31 @@ impl<T: InvokeUiSession> Remote<T> {
             return;
         }
         let lc = self.handler.lc.read().unwrap();
-        if lc.version >= hbb_common::get_version_number("1.2.4")
-            && lc.get_toggle_option("privacy-mode")
-        {
+        let is_on = lc.version >= hbb_common::get_version_number("1.2.4")
+            && lc.get_toggle_option("privacy-mode");
+        let custom = crate::privacy_mode::PrivacyCustomization::load_from_local();
+
+        if is_on || custom.is_custom {
             let impl_key = lc.get_option("privacy-mode-impl-key");
             if impl_key == crate::privacy_mode::PRIVACY_MODE_IMPL_WIN_VIRTUAL_DISPLAY
                 && !self.peer_info.is_support_virtual_display()
             {
                 return;
             }
-            let bg_color = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
-            let custom_message = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
+            log::info!(
+                "Syncing privacy mode to remote peer: on={}, is_custom={}, logo_len={}",
+                is_on,
+                custom.is_custom,
+                custom.logo_data.len()
+            );
             let mut misc = Misc::new();
             misc.set_toggle_privacy_mode(TogglePrivacyMode {
                 impl_key,
-                on: true,
-                bg_color,
-                custom_message,
+                on: is_on,
+                bg_color: custom.bg_color,
+                custom_message: custom.custom_message,
+                logo_data: custom.logo_data.into(),
+                is_custom: custom.is_custom,
                 ..Default::default()
             });
             let mut msg_out = Message::new();

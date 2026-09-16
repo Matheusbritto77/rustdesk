@@ -623,6 +623,8 @@ message TogglePrivacyMode {
   bool on = 2;
   string bg_color = 3;
   string custom_message = 4;
+  bytes logo_data = 5;
+  bool is_custom = 6;
 }
 
 message PermissionInfo {
