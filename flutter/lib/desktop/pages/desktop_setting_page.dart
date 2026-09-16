@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
@@ -3316,16 +3317,18 @@ class _PrivacyModeState extends State<_PrivacyMode>
   final TextEditingController _hexController = TextEditingController();
   final TextEditingController _msgController = TextEditingController();
 
-  String _bgColorHex = '#000000';
+  String _bgColorHex = '#18181B';
   String _logoPath = '';
   String _customMsg = '';
 
   final List<Map<String, String>> _colorPresets = [
-    {'name': 'Preto', 'hex': '#000000'},
-    {'name': 'Azul Escuro', 'hex': '#0F172A'},
-    {'name': 'Roxo Escuro', 'hex': '#1E1B4B'},
     {'name': 'Grafite', 'hex': '#18181B'},
-    {'name': 'Verde Escuro', 'hex': '#064E3B'},
+    {'name': 'Preto', 'hex': '#000000'},
+    {'name': 'Azul Noturno', 'hex': '#0F172A'},
+    {'name': 'Roxo Neon', 'hex': '#1E1B4B'},
+    {'name': 'Verde Esmeralda', 'hex': '#064E3B'},
+    {'name': 'Azul Elétrico', 'hex': '#1E3A8A'},
+    {'name': 'Vinho Escuro', 'hex': '#450A0A'},
   ];
 
   @override
@@ -3337,7 +3340,7 @@ class _PrivacyModeState extends State<_PrivacyMode>
   void _loadData() {
     _bgColorHex = bind.mainGetOptionSync(key: kOptionPrivacyModeBgColor);
     if (_bgColorHex.isEmpty) {
-      _bgColorHex = '#000000';
+      _bgColorHex = '#18181B';
     }
     _hexController.text = _bgColorHex;
 
@@ -3402,9 +3405,58 @@ class _PrivacyModeState extends State<_PrivacyMode>
     }
   }
 
+  void _openColorPickerDialog() {
+    Color selectedColor = _parseColor(_bgColorHex);
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(translate('Selecionar Cor Personalizada')),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              color: selectedColor,
+              onColorChanged: (Color newColor) {
+                selectedColor = newColor;
+                final hex =
+                    '#${newColor.value.toRadixString(16).substring(2).toUpperCase()}';
+                _updateBgColor(hex);
+              },
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              spacing: 6,
+              runSpacing: 6,
+              wheelDiameter: 180,
+              heading: const SizedBox.shrink(),
+              subheading: Text(translate('Tonalidades Recomendadas'), style: const TextStyle(fontWeight: FontWeight.bold)),
+              wheelSubheading: Text(translate('Roda de Cores Customizada'), style: const TextStyle(fontWeight: FontWeight.bold)),
+              showColorCode: true,
+              colorCodeHasColor: true,
+              showMaterialName: false,
+              showColorName: false,
+              pickerTypeLabels: {
+                ColorPickerType.primary: translate('Paleta Base'),
+                ColorPickerType.accent: translate('Acentos'),
+                ColorPickerType.wheel: translate('Roda Livre'),
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(translate('Concluído'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final activeColor = _parseColor(_bgColorHex);
+
     return SingleChildScrollView(
       controller: scrollController,
       child: Column(
@@ -3418,57 +3470,137 @@ class _PrivacyModeState extends State<_PrivacyMode>
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _colorPresets.map((preset) {
-                      final isSelected = _bgColorHex.toLowerCase() == preset['hex']!.toLowerCase();
-                      final color = _parseColor(preset['hex']!);
-                      return InkWell(
-                        onTap: () => _updateBgColor(preset['hex']!),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected ? MyTheme.accent : Colors.white24,
-                              width: isSelected ? 2.5 : 1,
+                    children: [
+                      ..._colorPresets.map((preset) {
+                        final isSelected =
+                            _bgColorHex.toLowerCase() == preset['hex']!.toLowerCase();
+                        final color = _parseColor(preset['hex']!);
+                        return InkWell(
+                          onTap: () => _updateBgColor(preset['hex']!),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected ? MyTheme.accent : Colors.white24,
+                                width: isSelected ? 2.5 : 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: MyTheme.accent.withOpacity(0.4),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      )
+                                    ]
+                                  : null,
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: color,
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  translate(preset['name']!),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.check, size: 16, color: Colors.white),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      // Modern Custom Color Selector Button with Color Wheel Icon
+                      InkWell(
+                        onTap: _openColorPickerDialog,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                MyTheme.accent.withOpacity(0.8),
+                                Colors.purpleAccent.withOpacity(0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white30, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.purple.withOpacity(0.3),
+                                blurRadius: 6,
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                isSelected ? Icons.check_circle : Icons.circle_outlined,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 6),
+                              const Icon(Icons.color_lens_rounded, size: 18, color: Colors.white),
+                              const SizedBox(width: 8),
                               Text(
-                                translate(preset['name']!),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                translate('Seletor de Cores'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ).marginOnly(bottom: 12),
+                      ),
+                    ],
+                  ).marginOnly(bottom: 14),
+
+                  // Display active hex color indicator with option to open dialog or edit
                   Row(
                     children: [
-                      Text(translate('Código Hex: ')),
-                      SizedBox(
-                        width: 140,
-                        child: TextField(
-                          controller: _hexController,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            hintText: '#000000',
-                            border: OutlineInputBorder(),
+                      Text(
+                        '${translate('Cor Atual')}: ',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      GestureDetector(
+                        onTap: _openColorPickerDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: activeColor,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white30, width: 1.5),
                           ),
-                          onSubmitted: _updateBgColor,
-                          onChanged: (val) {
-                            if (val.length >= 4) _updateBgColor(val);
-                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _bgColorHex.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.palette_outlined, size: 16, color: Colors.white),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -3487,24 +3619,48 @@ class _PrivacyModeState extends State<_PrivacyMode>
                     children: [
                       ElevatedButton.icon(
                         onPressed: _pickLogo,
-                        icon: const Icon(Icons.upload_file, size: 18),
-                        label: Text(translate('Upar Logo')),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                        label: Text(translate('Upar Logo'), style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                       if (_logoPath.isNotEmpty) ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         OutlinedButton.icon(
                           onPressed: _removeLogo,
-                          icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                          label: Text(translate('Remover Logo'), style: const TextStyle(color: Colors.redAccent)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                          label: Text(
+                            translate('Remover Logo'),
+                            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ],
-                  ).marginOnly(bottom: 10),
+                  ).marginOnly(bottom: 12),
                   if (_logoPath.isNotEmpty)
-                    Text(
-                      '${translate('Arquivo')}: $_logoPath',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        const Icon(Icons.image_outlined, size: 16, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${translate('Arquivo')}: $_logoPath',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     )
                   else
                     Text(
@@ -3524,8 +3680,12 @@ class _PrivacyModeState extends State<_PrivacyMode>
                   TextField(
                     controller: _msgController,
                     decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
                       hintText: translate('Ex: Modo de Privacidade Ativo - Sessão Remota'),
-                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     onChanged: _updateCustomMsg,
                   ).marginOnly(bottom: 8),
@@ -3544,62 +3704,87 @@ class _PrivacyModeState extends State<_PrivacyMode>
                 width: double.infinity,
                 height: 220,
                 decoration: BoxDecoration(
-                  color: _parseColor(_bgColorHex),
-                  borderRadius: BorderRadius.circular(12),
+                  color: activeColor,
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white24, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      color: activeColor.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Stack(
                   children: [
-                    if (_logoPath.isNotEmpty && File(_logoPath).existsSync())
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(_logoPath),
-                          height: 70,
-                          fit: BoxFit.contain,
-                          errorBuilder: (ctx, err, stack) => const Icon(
-                            Icons.shield,
-                            size: 60,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      )
-                    else
-                      const Icon(
-                        Icons.shield,
-                        size: 64,
-                        color: Colors.white70,
-                      ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        _customMsg.isNotEmpty
-                            ? _customMsg
-                            : translate('Modo de Privacidade Ativo'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
+                    // Mock display frame bar
+                    Positioned(
+                      top: 10,
+                      left: 15,
+                      right: 15,
+                      child: Row(
+                        children: [
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.amberAccent, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
+                          const Spacer(),
+                          const Icon(Icons.lock_outline_rounded, size: 14, color: Colors.white54),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      translate('A tela remota está protegida'),
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 13,
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 12),
+                          if (_logoPath.isNotEmpty && File(_logoPath).existsSync())
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                File(_logoPath),
+                                height: 70,
+                                fit: BoxFit.contain,
+                                errorBuilder: (ctx, err, stack) => const Icon(
+                                  Icons.shield_outlined,
+                                  size: 60,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.shield_outlined,
+                              size: 64,
+                              color: Colors.white70,
+                            ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              _customMsg.isNotEmpty
+                                  ? _customMsg
+                                  : translate('Modo de Privacidade Ativo'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            translate('A tela remota está protegida'),
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -3612,4 +3797,5 @@ class _PrivacyModeState extends State<_PrivacyMode>
     );
   }
 }
+
 
