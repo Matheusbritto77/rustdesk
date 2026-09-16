@@ -22,6 +22,7 @@ import '../../models/platform_model.dart';
 import '../../common/shared_state.dart';
 import './popup_menu.dart';
 import './kb_layout_type_chooser.dart';
+import './usb_redirect.dart';
 import 'package:flutter_hbb/utils/scale.dart';
 import 'package:flutter_hbb/common/widgets/custom_scale_base.dart';
 
@@ -850,6 +851,9 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       toolbarItems.add(_VoiceCallMenu(id: widget.id, ffi: widget.ffi));
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
+    if (isWindows && widget.ffi.connType == ConnType.defaultConn) {
+      toolbarItems.add(_UsbRedirectMenu(sessionId: widget.ffi.id));
+    }
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
     final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
     // innerAxis: how the toolbar icons themselves flow.
@@ -2967,6 +2971,25 @@ class _RecordMenu extends StatelessWidget {
       hoverColor: recordingModel.start
           ? _ToolbarTheme.hoverRedColor
           : _ToolbarTheme.hoverBlueColor,
+    );
+  }
+}
+
+class _UsbRedirectMenu extends StatelessWidget {
+  final String sessionId;
+  const _UsbRedirectMenu({Key? key, required this.sessionId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return _IconMenuButton(
+      icon: const Icon(Icons.usb_rounded, color: Colors.white),
+      tooltip: 'USB redirection',
+      onPressed: () => showDialog(
+        context: context,
+        builder: (_) => UsbRedirectDialog(sessionId: sessionId),
+      ),
+      color: _ToolbarTheme.blueColor,
+      hoverColor: _ToolbarTheme.hoverBlueColor,
     );
   }
 }

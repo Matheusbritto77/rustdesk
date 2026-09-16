@@ -4998,6 +4998,14 @@ pub enum Data {
     ResetDecoder(Option<usize>),
     RenameFile((i32, String, String, bool)),
     TakeScreenshot((i32, String)),
+    /// Ask the io_loop to send UsbAttachRequest (attach=true) or UsbDetachRequest (attach=false)
+    /// for the device identified by `bus_id` to the currently connected host.
+    UsbRedirectToggle {
+        bus_id: String,
+        vendor_id: u32,
+        product_id: u32,
+        attach: bool,
+    },
 }
 
 pub async fn confirm_insecure_connection(

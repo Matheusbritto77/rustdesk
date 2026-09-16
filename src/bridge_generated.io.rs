@@ -894,6 +894,29 @@ pub extern "C" fn wire_main_get_sound_inputs(port_: i64) {
 }
 
 #[no_mangle]
+pub extern "C" fn wire_main_get_local_usb_devices(port_: i64) {
+    wire_main_get_local_usb_devices_impl(port_)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_main_set_local_usb_device_selected(
+    bus_id: *mut wire_uint_8_list,
+    selected: bool,
+) -> support::WireSyncReturn {
+    wire_main_set_local_usb_device_selected_impl(bus_id, selected)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_main_get_usb_redirect_backend_status(port_: i64) {
+    wire_main_get_usb_redirect_backend_status_impl(port_)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_main_install_usb_redirect_backend(port_: i64) {
+    wire_main_install_usb_redirect_backend_impl(port_)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_main_get_login_device_info() -> support::WireSyncReturn {
     wire_main_get_login_device_info_impl()
 }

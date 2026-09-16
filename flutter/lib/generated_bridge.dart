@@ -620,6 +620,28 @@ abstract class Rustdesk {
 
   FlutterRustBridgeTaskConstMeta get kMainGetSoundInputsConstMeta;
 
+  /// Returns physical USB devices detected on this controller as JSON. Selection
+  /// is intentionally distinct from attachment: a USB/IP virtual-host backend is
+  /// required before a selected device can appear on the controlled machine.
+  Future<String> mainGetLocalUsbDevices({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kMainGetLocalUsbDevicesConstMeta;
+
+  bool mainSetLocalUsbDeviceSelected(
+      {required String busId, required bool selected, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kMainSetLocalUsbDeviceSelectedConstMeta;
+
+  Future<String> mainGetUsbRedirectBackendStatus({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kMainGetUsbRedirectBackendStatusConstMeta;
+
+  /// Installs the pinned third-party USB/IP components shipped beside the
+  /// portable payload. The executable manifest already requires elevation.
+  Future<String> mainInstallUsbRedirectBackend({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kMainInstallUsbRedirectBackendConstMeta;
+
   String mainGetLoginDeviceInfo({dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kMainGetLoginDeviceInfoConstMeta;
@@ -3837,6 +3859,78 @@ class RustdeskImpl implements Rustdesk {
   FlutterRustBridgeTaskConstMeta get kMainGetSoundInputsConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "main_get_sound_inputs",
+        argNames: [],
+      );
+
+  Future<String> mainGetLocalUsbDevices({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_main_get_local_usb_devices(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kMainGetLocalUsbDevicesConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kMainGetLocalUsbDevicesConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "main_get_local_usb_devices",
+        argNames: [],
+      );
+
+  bool mainSetLocalUsbDeviceSelected(
+      {required String busId, required bool selected, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(busId);
+    var arg1 = selected;
+    return _platform.executeSync(FlutterRustBridgeSyncTask(
+      callFfi: () =>
+          _platform.inner.wire_main_set_local_usb_device_selected(arg0, arg1),
+      parseSuccessData: _wire2api_bool,
+      constMeta: kMainSetLocalUsbDeviceSelectedConstMeta,
+      argValues: [busId, selected],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kMainSetLocalUsbDeviceSelectedConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "main_set_local_usb_device_selected",
+        argNames: ["busId", "selected"],
+      );
+
+  Future<String> mainGetUsbRedirectBackendStatus({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_main_get_usb_redirect_backend_status(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kMainGetUsbRedirectBackendStatusConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta
+      get kMainGetUsbRedirectBackendStatusConstMeta =>
+          const FlutterRustBridgeTaskConstMeta(
+            debugName: "main_get_usb_redirect_backend_status",
+            argNames: [],
+          );
+
+  Future<String> mainInstallUsbRedirectBackend({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_main_install_usb_redirect_backend(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kMainInstallUsbRedirectBackendConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kMainInstallUsbRedirectBackendConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "main_install_usb_redirect_backend",
         argNames: [],
       );
 
@@ -10111,6 +10205,56 @@ class RustdeskWire implements FlutterRustBridgeWireBase {
   );
   late final _wire_main_get_sound_inputs =
       _wire_main_get_sound_inputsPtr.asFunction<void Function(int)>();
+
+  void wire_main_get_local_usb_devices(int port_) {
+    return _wire_main_get_local_usb_devices(port_);
+  }
+
+  late final _wire_main_get_local_usb_devicesPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+    'wire_main_get_local_usb_devices',
+  );
+  late final _wire_main_get_local_usb_devices =
+      _wire_main_get_local_usb_devicesPtr.asFunction<void Function(int)>();
+
+  WireSyncReturn wire_main_set_local_usb_device_selected(
+    ffi.Pointer<wire_uint_8_list> bus_id,
+    bool selected,
+  ) {
+    return _wire_main_set_local_usb_device_selected(bus_id, selected);
+  }
+
+  late final _wire_main_set_local_usb_device_selectedPtr = _lookup<
+      ffi.NativeFunction<
+          WireSyncReturn Function(ffi.Pointer<wire_uint_8_list>,
+              ffi.Bool)>>('wire_main_set_local_usb_device_selected');
+  late final _wire_main_set_local_usb_device_selected =
+      _wire_main_set_local_usb_device_selectedPtr.asFunction<
+          WireSyncReturn Function(ffi.Pointer<wire_uint_8_list>, bool)>();
+
+  void wire_main_get_usb_redirect_backend_status(int port_) {
+    return _wire_main_get_usb_redirect_backend_status(port_);
+  }
+
+  late final _wire_main_get_usb_redirect_backend_statusPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+    'wire_main_get_usb_redirect_backend_status',
+  );
+  late final _wire_main_get_usb_redirect_backend_status =
+      _wire_main_get_usb_redirect_backend_statusPtr
+          .asFunction<void Function(int)>();
+
+  void wire_main_install_usb_redirect_backend(int port_) {
+    return _wire_main_install_usb_redirect_backend(port_);
+  }
+
+  late final _wire_main_install_usb_redirect_backendPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+    'wire_main_install_usb_redirect_backend',
+  );
+  late final _wire_main_install_usb_redirect_backend =
+      _wire_main_install_usb_redirect_backendPtr
+          .asFunction<void Function(int)>();
 
   WireSyncReturn wire_main_get_login_device_info() {
     return _wire_main_get_login_device_info();

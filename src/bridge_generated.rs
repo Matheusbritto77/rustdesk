@@ -2017,6 +2017,53 @@ fn wire_main_get_sound_inputs_impl(port_: MessagePort) {
         move || move |task_callback| Ok(main_get_sound_inputs()),
     )
 }
+fn wire_main_get_local_usb_devices_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, String>(
+        WrapInfo {
+            debug_name: "main_get_local_usb_devices",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| Ok(main_get_local_usb_devices()),
+    )
+}
+fn wire_main_set_local_usb_device_selected_impl(
+    bus_id: impl Wire2Api<String> + UnwindSafe,
+    selected: impl Wire2Api<bool> + UnwindSafe,
+) -> support::WireSyncReturn {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync(
+        WrapInfo {
+            debug_name: "main_set_local_usb_device_selected",
+            port: None,
+            mode: FfiCallMode::Sync,
+        },
+        move || {
+            let api_bus_id = bus_id.wire2api();
+            let api_selected = selected.wire2api();
+            Ok(main_set_local_usb_device_selected(api_bus_id, api_selected))
+        },
+    )
+}
+fn wire_main_get_usb_redirect_backend_status_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, String>(
+        WrapInfo {
+            debug_name: "main_get_usb_redirect_backend_status",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| Ok(main_get_usb_redirect_backend_status()),
+    )
+}
+fn wire_main_install_usb_redirect_backend_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, String>(
+        WrapInfo {
+            debug_name: "main_install_usb_redirect_backend",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| Ok(main_install_usb_redirect_backend()),
+    )
+}
 fn wire_main_get_login_device_info_impl() -> support::WireSyncReturn {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync(
         WrapInfo {

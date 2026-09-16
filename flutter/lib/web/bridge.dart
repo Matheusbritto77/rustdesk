@@ -758,6 +758,25 @@ class RustdeskImpl {
     return js.context.callMethod('getByName', ['option', key]);
   }
 
+  Future<String> mainGetLocalUsbDevices({dynamic hint}) {
+    return Future.value('[]');
+  }
+
+  bool mainSetLocalUsbDeviceSelected(
+      {required String busId, required bool selected, dynamic hint}) {
+    return false;
+  }
+
+  Future<String> mainGetUsbRedirectBackendStatus({dynamic hint}) {
+    return Future.value(
+        'USB redirection is only available in the Windows desktop client');
+  }
+
+  Future<String> mainInstallUsbRedirectBackend({dynamic hint}) {
+    return Future.value(
+        'USB/IP backend is only available in the Windows desktop client');
+  }
+
   Future<String> mainGetError({dynamic hint}) {
     throw UnimplementedError("mainGetError");
   }

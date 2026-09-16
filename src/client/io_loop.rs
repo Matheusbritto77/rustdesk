@@ -96,6 +96,8 @@ pub struct Remote<T: InvokeUiSession> {
     chroma: Arc<RwLock<Option<Chroma>>>,
     last_record_state: bool,
     sent_close_reason: bool,
+    /// Senders to per-device local usbipd TCP tunnels (bus_id -> tx).
+    usb_tunnels: std::collections::HashMap<String, hbb_common::tokio::sync::mpsc::UnboundedSender<bytes::Bytes>>,
 }
 
 #[derive(Default)]
@@ -145,6 +147,7 @@ impl<T: InvokeUiSession> Remote<T> {
             chroma: Default::default(),
             last_record_state: false,
             sent_close_reason: false,
+            usb_tunnels: Default::default(),
         }
     }
 
@@ -1090,6 +1093,25 @@ impl<T: InvokeUiSession> Remote<T> {
                     sid,
                     ..Default::default()
                 });
+                allow_err!(peer.send(&msg).await);
+            }
+            Data::UsbRedirectToggle { bus_id, vendor_id, product_id, attach } => {
+                let mut msg = Message::new();
+                let mut ch = UsbChannel::new();
+                if attach {
+                    ch.set_attach_req(UsbAttachRequest {
+                        bus_id,
+                        vendor_id,
+                        product_id,
+                        ..Default::default()
+                    });
+                } else {
+                    ch.set_detach_req(UsbDetachRequest {
+                        bus_id,
+                        ..Default::default()
+                    });
+                }
+                msg.set_usb_channel(ch);
                 allow_err!(peer.send(&msg).await);
             }
             _ => {}
@@ -2213,6 +2235,21 @@ impl<T: InvokeUiSession> Remote<T> {
                         }
                     }
                     self.handler.handle_terminal_response(response);
+                }
+                Some(message::Union::UsbChannel(ch)) => {
+                    use base::message_proto::usb_channel::Union as UsbUnion;
+                    match ch.union {
+                        Some(UsbUnion::DataPacket(pkt)) => {
+                            if let Some(tx) = self.usb_tunnels.get(&pkt.bus_id) {
+                                tx.send(bytes::Bytes::from(pkt.data.to_vec())).ok();
+                            }
+                        }
+                        Some(UsbUnion::DetachReq(req)) => {
+                            // Host confirmed detach or initiated it; close local tunnel.
+                            self.usb_tunnels.remove(&req.bus_id);
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }

@@ -475,6 +475,23 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::TakeScreenshot((display, sid)));
     }
 
+    /// Sends a USB attach or detach request for `bus_id` to the remote host.
+    /// `vendor_id`/`product_id` are only used for the attach path.
+    pub fn toggle_usb_redirect(
+        &self,
+        bus_id: String,
+        vendor_id: u32,
+        product_id: u32,
+        attach: bool,
+    ) {
+        self.send(Data::UsbRedirectToggle {
+            bus_id,
+            vendor_id,
+            product_id,
+            attach,
+        });
+    }
+
     pub fn is_recording(&self) -> bool {
         self.lc.read().unwrap().record_state
     }
