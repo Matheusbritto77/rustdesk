@@ -993,6 +993,44 @@ message PortForwardChannel {
   }
 }
 
+message UsbDeviceInfo {
+  string bus_id = 1;
+  uint32 vendor_id = 2;
+  uint32 product_id = 3;
+  string name = 4;
+  bool is_redirected = 5;
+  string device_class = 6;
+}
+
+message UsbDeviceList {
+  repeated UsbDeviceInfo devices = 1;
+}
+
+message UsbAttachRequest {
+  string bus_id = 1;
+  uint32 vendor_id = 2;
+  uint32 product_id = 3;
+}
+
+message UsbDetachRequest {
+  string bus_id = 1;
+}
+
+message UsbDataPacket {
+  string bus_id = 1;
+  uint32 seqnum = 2;
+  bytes data = 3;
+}
+
+message UsbChannel {
+  oneof union {
+    UsbDeviceList device_list = 1;
+    UsbAttachRequest attach_req = 2;
+    UsbDetachRequest detach_req = 3;
+    UsbDataPacket data_packet = 4;
+  }
+}
+
 message Message {
   oneof union {
     SignedId signed_id = 3;
@@ -1026,5 +1064,7 @@ message Message {
     TerminalAction terminal_action = 31;
     TerminalResponse terminal_response = 32;
     PortForwardChannel port_forward_channel = 33;
+    UsbChannel usb_channel = 34;
   }
 }
+
