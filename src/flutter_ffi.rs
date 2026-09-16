@@ -940,6 +940,53 @@ pub fn main_get_sound_inputs() -> Vec<String> {
     vec![String::from("")]
 }
 
+/// Returns physical USB devices detected on this controller as JSON. Selection
+/// is intentionally distinct from attachment: a USB/IP virtual-host backend is
+/// required before a selected device can appear on the controlled machine.
+pub fn main_get_local_usb_devices() -> String {
+    serde_json::to_string(&base::usb_redirection::list_local_usb_devices_real())
+        .unwrap_or_else(|_| "[]".to_owned())
+}
+
+pub fn main_set_local_usb_device_selected(bus_id: String, selected: bool) -> SyncReturn<bool> {
+    SyncReturn(base::usb_redirection::toggle_usb_redirection(
+        &bus_id, selected,
+    ))
+}
+
+pub fn main_get_usb_redirect_backend_status() -> String {
+    base::usb_redirection::backend_status()
+}
+
+/// Installs the pinned third-party USB/IP components shipped beside the
+/// portable payload. The executable manifest already requires elevation.
+pub fn main_install_usb_redirect_backend() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        return base::usb_redirection::install_backend();
+    }
+    #[cfg(not(target_os = "windows"))]
+    "USB/IP backend is only available on Windows".to_owned()
+}
+
+/// Sends a USB attach (or detach) request for `bus_id` through the currently
+/// active remote session identified by `session_id`.
+/// Returns false if the session does not exist or the send failed.
+pub fn session_toggle_usb_redirect(
+    session_id: SessionID,
+    bus_id: String,
+    vendor_id: u32,
+    product_id: u32,
+    attach: bool,
+) -> SyncReturn<bool> {
+    if let Some(session) = crate::flutter::sessions::get_session_by_session_id(&session_id) {
+        session.toggle_usb_redirect(bus_id, vendor_id, product_id, attach);
+        SyncReturn(true)
+    } else {
+        SyncReturn(false)
+    }
+}
+
 pub fn main_get_login_device_info() -> SyncReturn<String> {
     SyncReturn(get_login_device_info_json())
 }

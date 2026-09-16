@@ -354,6 +354,9 @@ pub struct Connection {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     terminal_user_token: Option<TerminalUserToken>,
     terminal_generic_service: Option<Box<GenericService>>,
+    /// Sender to the local usbipd TCP relay task for this connection.
+    /// None when no USB device is currently attached.
+    usb_tunnel_tx: Option<hbb_common::tokio::sync::mpsc::UnboundedSender<bytes::Bytes>>,
 }
 
 impl ConnInner {
@@ -548,6 +551,7 @@ impl Connection {
             terminal_generic_service: None,
             conn_audit_primary_auth: ConnAuditPrimaryAuth::None,
             conn_audit_two_factor: ConnAuditTwoFactor::None,
+            usb_tunnel_tx: None,
         };
         let addr = hbb_common::try_into_v4(addr);
         if !conn.on_open(addr).await {
@@ -2245,6 +2249,103 @@ impl Connection {
         });
     }
 
+    /// Handle an incoming UsbChannel message from the controller.
+    /// On `attach_req`: spawn a task that proxies data between the controller
+    /// and the local usbipd daemon (TCP 127.0.0.1:3240).
+    async fn handle_usb_channel(&mut self, ch: base::message_proto::UsbChannel) {
+        use base::message_proto::{usb_channel::Union as UsbUnion, UsbDataPacket};
+        match ch.union {
+            Some(UsbUnion::AttachReq(req)) => {
+                // Drop any existing tunnel before opening a new one.
+                self.usb_tunnel_tx = None;
+                const USBIPD_PORT: u16 = 3240;
+                let addr = format!("127.0.0.1:{}", USBIPD_PORT);
+                match hbb_common::tokio::net::TcpStream::connect(&addr).await {
+                    Err(e) => {
+                        log::warn!("USB/IP: cannot connect to local usbipd ({}): {}", addr, e);
+                        // Notify controller that attach failed.
+                        let mut msg = base::message_proto::Message::new();
+                        let mut out = base::message_proto::UsbChannel::new();
+                        out.set_detach_req(base::message_proto::UsbDetachRequest {
+                            bus_id: req.bus_id,
+                            ..Default::default()
+                        });
+                        msg.set_usb_channel(out);
+                        self.send_raw(msg);
+                    }
+                    Ok(stream) => {
+                        use hbb_common::tokio::io::{AsyncReadExt, AsyncWriteExt};
+                        let bus_id = req.bus_id.clone();
+                        let (inbound_tx, mut inbound_rx) =
+                            hbb_common::tokio::sync::mpsc::unbounded_channel::<bytes::Bytes>();
+                        self.usb_tunnel_tx = Some(inbound_tx);
+                        let inner_tx = self.inner.tx.clone();
+                        let bus_id_clone = bus_id.clone();
+                        hbb_common::tokio::spawn(async move {
+                            let (mut rd, mut wr) = stream.into_split();
+                            // Inbound from controller -> write to usbipd
+                            let write_task = hbb_common::tokio::spawn(async move {
+                                while let Some(data) = inbound_rx.recv().await {
+                                    if wr.write_all(&data).await.is_err() {
+                                        break;
+                                    }
+                                }
+                            });
+                            // Read from usbipd -> send to controller as UsbDataPacket
+                            let mut buf = vec![0u8; 65536];
+                            loop {
+                                match rd.read(&mut buf).await {
+                                    Ok(0) | Err(_) => break,
+                                    Ok(n) => {
+                                        let mut msg = base::message_proto::Message::new();
+                                        let mut out = base::message_proto::UsbChannel::new();
+                                        out.set_data_packet(UsbDataPacket {
+                                            bus_id: bus_id_clone.clone(),
+                                            seqnum: 0,
+                                            data: buf[..n].to_vec().into(),
+                                            ..Default::default()
+                                        });
+                                        msg.set_usb_channel(out);
+                                        if let Some(ref tx) = inner_tx {
+                                            tx.send((
+                                                hbb_common::tokio::time::Instant::now(),
+                                                std::sync::Arc::new(msg),
+                                            ))
+                                            .ok();
+                                        }
+                                    }
+                                }
+                            }
+                            write_task.abort();
+                        });
+                        log::info!("USB/IP: tunnel opened for bus_id={}", bus_id);
+                    }
+                }
+            }
+            Some(UsbUnion::DataPacket(pkt)) => {
+                if let Some(ref tx) = self.usb_tunnel_tx {
+                    tx.send(bytes::Bytes::from(pkt.data.to_vec())).ok();
+                }
+            }
+            Some(UsbUnion::DetachReq(_)) => {
+                self.usb_tunnel_tx = None;
+                log::info!("USB/IP: tunnel closed by controller");
+            }
+            _ => {}
+        }
+    }
+
+    fn send_raw(&self, msg: base::message_proto::Message) {
+        use std::sync::Arc;
+        if let Some(ref tx) = self.inner.tx {
+            tx.send((
+                hbb_common::tokio::time::Instant::now(),
+                Arc::new(msg),
+            ))
+            .ok();
+        }
+    }
+
     #[inline]
     fn send_fs(&mut self, data: ipc::FS) {
         self.send_to_cm(ipc::Data::FS(data));
@@ -3908,6 +4009,7 @@ impl Connection {
                     #[cfg(any(target_os = "android", target_os = "ios"))]
                     log::warn!("Terminal action received but not supported on this platform");
                 }
+                Some(message::Union::UsbChannel(ch)) => self.handle_usb_channel(ch).await,
                 _ => {}
             }
         }
