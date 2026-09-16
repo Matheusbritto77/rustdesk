@@ -389,13 +389,14 @@ impl PrivacyModeImpl {
 
         self.painter_running.store(true, Ordering::SeqCst);
         let painter_running = self.painter_running.clone();
+        let hwnd_values: Vec<usize> = hwnds.into_iter().map(|h| h as usize).collect();
 
         std::thread::spawn(move || {
             log::info!(
                 "Started custom privacy painter thread for {} monitors/hwnds",
-                hwnds.len()
+                hwnd_values.len()
             );
-            run_custom_privacy_painter(hwnds, painter_running);
+            run_custom_privacy_painter(hwnd_values, painter_running);
             log::info!("Custom privacy painter thread stopped");
         });
     }
@@ -428,7 +429,7 @@ fn parse_hex_color(hex_str: &str) -> (u8, u8, u8, u32) {
     (r, g, b, colorref)
 }
 
-fn run_custom_privacy_painter(hwnds: Vec<HWND>, running: Arc<AtomicBool>) {
+fn run_custom_privacy_painter(hwnds: Vec<usize>, running: Arc<AtomicBool>) {
     let bg_color_hex = crate::ui_interface::get_option("privacy_mode_bg_color".to_string());
     let custom_msg = crate::ui_interface::get_option("privacy_mode_custom_message".to_string());
     let logo_path = crate::ui_interface::get_option("privacy_mode_logo_path".to_string());
@@ -491,7 +492,8 @@ fn run_custom_privacy_painter(hwnds: Vec<HWND>, running: Arc<AtomicBool>) {
     };
 
     while running.load(Ordering::SeqCst) {
-        for &hwnd in &hwnds {
+        for &hwnd_val in &hwnds {
+            let hwnd = hwnd_val as HWND;
             unsafe {
                 if FALSE != IsWindowVisible(hwnd) {
                     paint_single_window(hwnd, bg_colorref, logo_data.as_ref(), &title_text);
@@ -561,7 +563,7 @@ unsafe fn paint_single_window(
         let draw_y = current_y - lh / 2;
         current_y += lh / 2 + 30;
 
-        let mut bmi = BITMAPINFO {
+        let bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
                 biSize: size_of::<BITMAPINFOHEADER>() as _,
                 biWidth: *lw,
