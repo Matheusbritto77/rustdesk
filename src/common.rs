@@ -35,10 +35,8 @@ use hbb_common::{
     ResultType, Stream,
 };
 
-use crate::{
-    hbbs_http::{create_http_client_async, get_url_for_tls},
-    ui_interface::{get_api_server as ui_get_api_server, get_option, is_installed, set_option},
-};
+use crate::hbbs_http::{create_http_client_async, get_url_for_tls};
+pub use crate::ui_interface::{get_api_server as ui_get_api_server, get_option, is_installed, set_option};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum GrabState {

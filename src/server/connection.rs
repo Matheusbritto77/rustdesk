@@ -4601,10 +4601,10 @@ impl Connection {
 
     async fn toggle_privacy_mode(&mut self, t: TogglePrivacyMode) {
         if !t.bg_color.is_empty() {
-            crate::common::set_option("privacy_mode_bg_color".to_string(), t.bg_color);
+            crate::ui_interface::set_option("privacy_mode_bg_color".to_string(), t.bg_color);
         }
         if !t.custom_message.is_empty() {
-            crate::common::set_option("privacy_mode_custom_message".to_string(), t.custom_message);
+            crate::ui_interface::set_option("privacy_mode_custom_message".to_string(), t.custom_message);
         }
         if t.on {
             self.turn_on_privacy(t.impl_key).await;
