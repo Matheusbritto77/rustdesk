@@ -124,6 +124,9 @@ const String kOptionEnableTunnel = "enable-tunnel";
 const String kOptionEnableRemoteRestart = "enable-remote-restart";
 const String kOptionEnableBlockInput = "enable-block-input";
 const String kOptionEnablePrivacyMode = "enable-privacy-mode";
+const String kOptionPrivacyModeBgColor = "privacy_mode_bg_color";
+const String kOptionPrivacyModeLogoPath = "privacy_mode_logo_path";
+const String kOptionPrivacyModeCustomMessage = "privacy_mode_custom_message";
 const String kOptionEnablePermChangeInAcceptWindow =
     "enable-perm-change-in-accept-window";
 const String kOptionAllowRemoteConfigModification =

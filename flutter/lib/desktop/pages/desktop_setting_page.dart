@@ -54,6 +54,7 @@ enum SettingsTabKey {
   network,
   display,
   account,
+  privacyMode,
   printer,
   about,
 }
@@ -73,6 +74,7 @@ class DesktopSettingPage extends StatefulWidget {
       SettingsTabKey.network,
     if (!bind.isIncomingOnly()) SettingsTabKey.display,
     if (!bind.isDisableAccount()) SettingsTabKey.account,
+    SettingsTabKey.privacyMode,
     if (isWindows &&
         !bind.isDisableSettings() &&
         bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
@@ -204,6 +206,13 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           settingTabs.add(
               _TabInfo(tab, 'Account', Icons.person_outline, Icons.person));
           break;
+        case SettingsTabKey.privacyMode:
+          settingTabs.add(_TabInfo(
+              tab,
+              'Modo de Privacidade',
+              Icons.privacy_tip_outlined,
+              Icons.privacy_tip));
+          break;
         case SettingsTabKey.printer:
           settingTabs
               .add(_TabInfo(tab, 'Printer', Icons.print_outlined, Icons.print));
@@ -235,6 +244,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           break;
         case SettingsTabKey.account:
           children.add(const _Account());
+          break;
+        case SettingsTabKey.privacyMode:
+          children.add(const _PrivacyMode());
           break;
         case SettingsTabKey.printer:
           children.add(const _Printer());
@@ -3287,3 +3299,317 @@ void changeSocks5Proxy() async {
 }
 
 //#endregion
+
+class _PrivacyMode extends StatefulWidget {
+  const _PrivacyMode({Key? key}) : super(key: key);
+
+  @override
+  State<_PrivacyMode> createState() => _PrivacyModeState();
+}
+
+class _PrivacyModeState extends State<_PrivacyMode>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  final scrollController = ScrollController();
+
+  final TextEditingController _hexController = TextEditingController();
+  final TextEditingController _msgController = TextEditingController();
+
+  String _bgColorHex = '#000000';
+  String _logoPath = '';
+  String _customMsg = '';
+
+  final List<Map<String, String>> _colorPresets = [
+    {'name': 'Preto', 'hex': '#000000'},
+    {'name': 'Azul Escuro', 'hex': '#0F172A'},
+    {'name': 'Roxo Escuro', 'hex': '#1E1B4B'},
+    {'name': 'Grafite', 'hex': '#18181B'},
+    {'name': 'Verde Escuro', 'hex': '#064E3B'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    _bgColorHex = bind.mainGetOptionSync(key: kOptionPrivacyModeBgColor);
+    if (_bgColorHex.isEmpty) {
+      _bgColorHex = '#000000';
+    }
+    _hexController.text = _bgColorHex;
+
+    _logoPath = bind.mainGetOptionSync(key: kOptionPrivacyModeLogoPath);
+
+    _customMsg = bind.mainGetOptionSync(key: kOptionPrivacyModeCustomMessage);
+    if (_customMsg.isEmpty) {
+      _customMsg = 'Modo de Privacidade Ativo';
+    }
+    _msgController.text = _customMsg;
+  }
+
+  Future<void> _updateBgColor(String hex) async {
+    String cleanHex = hex.trim();
+    if (!cleanHex.startsWith('#')) {
+      cleanHex = '#$cleanHex';
+    }
+    setState(() {
+      _bgColorHex = cleanHex;
+      _hexController.text = cleanHex;
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeBgColor, value: cleanHex);
+  }
+
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null) {
+      final path = result.files.single.path!;
+      setState(() {
+        _logoPath = path;
+      });
+      await bind.mainSetOption(key: kOptionPrivacyModeLogoPath, value: path);
+    }
+  }
+
+  Future<void> _removeLogo() async {
+    setState(() {
+      _logoPath = '';
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeLogoPath, value: '');
+  }
+
+  Future<void> _updateCustomMsg(String msg) async {
+    setState(() {
+      _customMsg = msg;
+    });
+    await bind.mainSetOption(key: kOptionPrivacyModeCustomMessage, value: msg);
+  }
+
+  Color _parseColor(String hexStr) {
+    try {
+      String hex = hexStr.replaceAll('#', '');
+      if (hex.length == 6) {
+        hex = 'FF$hex';
+      }
+      return Color(int.parse(hex, radix: 16));
+    } catch (_) {
+      return Colors.black;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return SingleChildScrollView(
+      controller: scrollController,
+      child: Column(
+        children: [
+          _Card(
+            title: 'Cor do Fundo do Modo de Privacidade',
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _colorPresets.map((preset) {
+                      final isSelected = _bgColorHex.toLowerCase() == preset['hex']!.toLowerCase();
+                      final color = _parseColor(preset['hex']!);
+                      return InkWell(
+                        onTap: () => _updateBgColor(preset['hex']!),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? MyTheme.accent : Colors.white24,
+                              width: isSelected ? 2.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isSelected ? Icons.check_circle : Icons.circle_outlined,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                translate(preset['name']!),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ).marginOnly(bottom: 12),
+                  Row(
+                    children: [
+                      Text(translate('Código Hex: ')),
+                      SizedBox(
+                        width: 140,
+                        child: TextField(
+                          controller: _hexController,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            hintText: '#000000',
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: _updateBgColor,
+                          onChanged: (val) {
+                            if (val.length >= 4) _updateBgColor(val);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+            ],
+          ),
+          _Card(
+            title: 'Logo Personalizada',
+            children: [
+              Column(
+                crossAxisAlignment: CrossAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _pickLogo,
+                        icon: const Icon(Icons.upload_file, size: 18),
+                        label: Text(translate('Upar Logo')),
+                      ),
+                      if (_logoPath.isNotEmpty) ...[
+                        const SizedBox(width: 10),
+                        OutlinedButton.icon(
+                          onPressed: _removeLogo,
+                          icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                          label: Text(translate('Remover Logo'), style: const TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ],
+                  ).marginOnly(bottom: 10),
+                  if (_logoPath.isNotEmpty)
+                    Text(
+                      '${translate('Arquivo')}: $_logoPath',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      translate('Nenhuma logo selecionada. Usando ícone padrão.'),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+            ],
+          ),
+          _Card(
+            title: 'Mensagem no Modo de Privacidade',
+            children: [
+              Column(
+                crossAxisAlignment: CrossAlignment.start,
+                children: [
+                  TextField(
+                    controller: _msgController,
+                    decoration: InputDecoration(
+                      hintText: translate('Ex: Modo de Privacidade Ativo - Sessão Remota'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: _updateCustomMsg,
+                  ).marginOnly(bottom: 8),
+                  Text(
+                    translate('Esta mensagem será exibida na tela do dispositivo controlado durante o modo privado.'),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ).marginOnly(left: _kCheckBoxLeftMargin, bottom: 10),
+            ],
+          ),
+          _Card(
+            title: 'Pré-Visualização ao Vivo',
+            children: [
+              Container(
+                width: double.infinity,
+                height: 220,
+                decoration: BoxDecoration(
+                  color: _parseColor(_bgColorHex),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_logoPath.isNotEmpty && File(_logoPath).existsSync())
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(_logoPath),
+                          height: 70,
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, stack) => const Icon(
+                            Icons.shield,
+                            size: 60,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.shield,
+                        size: 64,
+                        color: Colors.white70,
+                      ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        _customMsg.isNotEmpty
+                            ? _customMsg
+                            : translate('Modo de Privacidade Ativo'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      translate('A tela remota está protegida'),
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ).marginOnly(left: _kCheckBoxLeftMargin, right: 10, bottom: 10),
+            ],
+          ),
+        ],
+      ).marginOnly(bottom: _kListViewBottomMargin),
+    );
+  }
+}
+
