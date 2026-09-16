@@ -3,9 +3,7 @@ use crate::{
     flutter_ffi::{EventToUI, SessionID},
     ui_session_interface::{io_loop, InvokeUiSession, Session},
 };
-use flutter_rust_bridge::StreamSink;
-#[cfg(feature = "flutter")]
-use crate::bridge_generated::*;
+use flutter_rust_bridge::{support::IntoDart, StreamSink};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use hbb_common::dlopen::{
     symbor::{Library, Symbol},

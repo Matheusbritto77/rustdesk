@@ -11,7 +11,7 @@ use crate::{
     input::*,
     ui_interface::{self, *},
 };
-use flutter_rust_bridge::{StreamSink, SyncReturn};
+use flutter_rust_bridge::{support::IntoDart, StreamSink, SyncReturn};
 use hbb_common::{
     config::{self, LocalConfig, PeerConfig, PeerInfoSerde},
     lazy_static, log,
@@ -99,8 +99,7 @@ pub enum EventToUI {
     Texture(usize, bool), // (display, gpu_texture)
 }
 
-#[cfg(feature = "flutter")]
-pub use crate::bridge_generated::*;
+
 
 pub fn host_stop_system_key_propagate(_stopped: bool) {
     #[cfg(windows)]
