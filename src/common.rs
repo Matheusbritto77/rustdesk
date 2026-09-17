@@ -121,11 +121,8 @@ pub fn global_init() -> bool {
     std::panic::set_hook(Box::new(|info| {
         log::error!("FATAL PANIC: {}", info);
     }));
-    *hbb_common::config::PROD_RENDEZVOUS_SERVER.write().unwrap() = "remoradesk.online".to_string();
-    let cur_custom = hbb_common::config::Config::get_option("custom-rendezvous-server");
-    if cur_custom.is_empty() || cur_custom == "209.126.81.68" {
-        hbb_common::config::Config::set_option("custom-rendezvous-server".to_string(), "remoradesk.online".to_string());
-    }
+    *hbb_common::config::PROD_RENDEZVOUS_SERVER.write().unwrap() = "209.126.81.68".to_string();
+    hbb_common::config::Config::set_option("custom-rendezvous-server".to_string(), "209.126.81.68".to_string());
     if hbb_common::config::Config::get_option("key").is_empty() {
         hbb_common::config::Config::set_option("key".to_string(), "BhIi7pNGm3Mfe+ASZwhO273SfCBFoVVp6SKicTEjDwY=".to_string());
     }
