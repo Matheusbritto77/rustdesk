@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'package:uuid/uuid.dart';
+
 import '../../common.dart';
 import '../../models/platform_model.dart';
 
@@ -26,7 +28,7 @@ class _UsbDevice {
 /// controlled host has a USB/IP virtual-host backend.
 class UsbRedirectDialog extends StatefulWidget {
   /// The session through which attach/detach messages will be sent.
-  final String sessionId;
+  final dynamic sessionId;
   const UsbRedirectDialog({Key? key, required this.sessionId}) : super(key: key);
 
   @override
@@ -63,11 +65,13 @@ class _UsbRedirectDialogState extends State<UsbRedirectDialog> {
     final next = !device.selected;
     // Send the attach/detach request through the active remote session.
     final sentOk = bind.sessionToggleUsbRedirect(
-      sessionId: widget.sessionId,
+      sessionId: widget.sessionId is UuidValue
+          ? widget.sessionId as UuidValue
+          : UuidValue(widget.sessionId.toString()),
       busId: device.busId,
       vendorId: device.vendorId,
       productId: device.productId,
-      selected: next,
+      attach: next,
     );
     // Mirror the selection in local Rust state so the list stays in sync.
     if (sentOk) {

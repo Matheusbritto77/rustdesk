@@ -2064,6 +2064,35 @@ fn wire_main_install_usb_redirect_backend_impl(port_: MessagePort) {
         move || move |task_callback| Ok(main_install_usb_redirect_backend()),
     )
 }
+fn wire_session_toggle_usb_redirect_impl(
+    session_id: impl Wire2Api<uuid::Uuid> + UnwindSafe,
+    bus_id: impl Wire2Api<String> + UnwindSafe,
+    vendor_id: impl Wire2Api<u32> + UnwindSafe,
+    product_id: impl Wire2Api<u32> + UnwindSafe,
+    attach: impl Wire2Api<bool> + UnwindSafe,
+) -> support::WireSyncReturn {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync(
+        WrapInfo {
+            debug_name: "session_toggle_usb_redirect",
+            port: None,
+            mode: FfiCallMode::Sync,
+        },
+        move || {
+            let api_session_id = session_id.wire2api();
+            let api_bus_id = bus_id.wire2api();
+            let api_vendor_id = vendor_id.wire2api();
+            let api_product_id = product_id.wire2api();
+            let api_attach = attach.wire2api();
+            Ok(session_toggle_usb_redirect(
+                api_session_id,
+                api_bus_id,
+                api_vendor_id,
+                api_product_id,
+                api_attach,
+            ))
+        },
+    )
+}
 fn wire_main_get_login_device_info_impl() -> support::WireSyncReturn {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync(
         WrapInfo {
