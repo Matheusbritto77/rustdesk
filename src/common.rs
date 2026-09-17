@@ -1110,21 +1110,8 @@ pub fn get_custom_rendezvous_server(custom: String) -> String {
 }
 
 #[inline]
-pub fn get_api_server(api: String, custom: String) -> String {
-    if Config::no_register_device() {
-        return "".to_owned();
-    }
-    let mut res = get_api_server_(api, custom);
-    if res.ends_with('/') {
-        res.pop();
-    }
-    if res.starts_with("https")
-        && res.ends_with(":21114")
-        && get_builtin_option(keys::OPTION_ALLOW_HTTPS_21114) != "Y"
-    {
-        return res.replace(":21114", "");
-    }
-    res
+pub fn get_api_server(_api: String, _custom: String) -> String {
+    "".to_owned()
 }
 
 fn get_api_server_(api: String, custom: String) -> String {
