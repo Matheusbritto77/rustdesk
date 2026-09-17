@@ -917,6 +917,17 @@ pub extern "C" fn wire_main_install_usb_redirect_backend(port_: i64) {
 }
 
 #[no_mangle]
+pub extern "C" fn wire_session_toggle_usb_redirect(
+    session_id: *mut wire_uint_8_list,
+    bus_id: *mut wire_uint_8_list,
+    vendor_id: u32,
+    product_id: u32,
+    attach: bool,
+) -> support::WireSyncReturn {
+    wire_session_toggle_usb_redirect_impl(session_id, bus_id, vendor_id, product_id, attach)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_main_get_login_device_info() -> support::WireSyncReturn {
     wire_main_get_login_device_info_impl()
 }

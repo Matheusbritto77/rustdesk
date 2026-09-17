@@ -642,6 +642,19 @@ abstract class Rustdesk {
 
   FlutterRustBridgeTaskConstMeta get kMainInstallUsbRedirectBackendConstMeta;
 
+  /// Sends a USB attach (or detach) request for `bus_id` through the currently
+  /// active remote session identified by `session_id`.
+  /// Returns false if the session does not exist or the send failed.
+  bool sessionToggleUsbRedirect(
+      {required UuidValue sessionId,
+      required String busId,
+      required int vendorId,
+      required int productId,
+      required bool attach,
+      dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kSessionToggleUsbRedirectConstMeta;
+
   String mainGetLoginDeviceInfo({dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kMainGetLoginDeviceInfoConstMeta;
@@ -3932,6 +3945,34 @@ class RustdeskImpl implements Rustdesk {
       const FlutterRustBridgeTaskConstMeta(
         debugName: "main_install_usb_redirect_backend",
         argNames: [],
+      );
+
+  bool sessionToggleUsbRedirect(
+      {required UuidValue sessionId,
+      required String busId,
+      required int vendorId,
+      required int productId,
+      required bool attach,
+      dynamic hint}) {
+    var arg0 = _platform.api2wire_Uuid(sessionId);
+    var arg1 = _platform.api2wire_String(busId);
+    var arg2 = api2wire_u32(vendorId);
+    var arg3 = api2wire_u32(productId);
+    var arg4 = attach;
+    return _platform.executeSync(FlutterRustBridgeSyncTask(
+      callFfi: () => _platform.inner
+          .wire_session_toggle_usb_redirect(arg0, arg1, arg2, arg3, arg4),
+      parseSuccessData: _wire2api_bool,
+      constMeta: kSessionToggleUsbRedirectConstMeta,
+      argValues: [sessionId, busId, vendorId, productId, attach],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kSessionToggleUsbRedirectConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "session_toggle_usb_redirect",
+        argNames: ["sessionId", "busId", "vendorId", "productId", "attach"],
       );
 
   String mainGetLoginDeviceInfo({dynamic hint}) {
@@ -10255,6 +10296,41 @@ class RustdeskWire implements FlutterRustBridgeWireBase {
   late final _wire_main_install_usb_redirect_backend =
       _wire_main_install_usb_redirect_backendPtr
           .asFunction<void Function(int)>();
+
+  WireSyncReturn wire_session_toggle_usb_redirect(
+    ffi.Pointer<wire_uint_8_list> session_id,
+    ffi.Pointer<wire_uint_8_list> bus_id,
+    int vendor_id,
+    int product_id,
+    bool attach,
+  ) {
+    return _wire_session_toggle_usb_redirect(
+      session_id,
+      bus_id,
+      vendor_id,
+      product_id,
+      attach,
+    );
+  }
+
+  late final _wire_session_toggle_usb_redirectPtr = _lookup<
+      ffi.NativeFunction<
+          WireSyncReturn Function(
+            ffi.Pointer<wire_uint_8_list>,
+            ffi.Pointer<wire_uint_8_list>,
+            ffi.Uint32,
+            ffi.Uint32,
+            ffi.Bool,
+          )>>('wire_session_toggle_usb_redirect');
+  late final _wire_session_toggle_usb_redirect =
+      _wire_session_toggle_usb_redirectPtr.asFunction<
+          WireSyncReturn Function(
+            ffi.Pointer<wire_uint_8_list>,
+            ffi.Pointer<wire_uint_8_list>,
+            int,
+            int,
+            bool,
+          )>();
 
   WireSyncReturn wire_main_get_login_device_info() {
     return _wire_main_get_login_device_info();
