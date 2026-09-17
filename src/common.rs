@@ -123,7 +123,7 @@ pub fn global_init() -> bool {
     }));
     *hbb_common::config::PROD_RENDEZVOUS_SERVER.write().unwrap() = "209.126.81.68".to_string();
     hbb_common::config::Config::set_option("custom-rendezvous-server".to_string(), "209.126.81.68".to_string());
-    hbb_common::config::Config::set_option("key".to_string(), "XANyJH03Gt51d+2gBVla8nRMKC8yadJTtNitWtxrHVQ=".to_string());
+    hbb_common::config::Config::set_option("key".to_string(), "kh19xQC6NxTniLnBZKlc0pmzRXO1d5Jk4Ip4lG44luU=".to_string());
     hbb_common::config::Config::set_option("enable-webrtc".to_string(), "Y".to_string());
     hbb_common::config::Config::set_option("enable-udp-punch".to_string(), "Y".to_string());
     hbb_common::config::Config::set_option("enable-ipv6-punch".to_string(), "Y".to_string());

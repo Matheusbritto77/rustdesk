@@ -4914,10 +4914,24 @@ pub enum Data {
 }
 
 pub async fn confirm_insecure_connection(
-    _interface: &impl Interface,
-    _receiver: &mut UnboundedReceiver<Data>,
+    interface: &impl Interface,
+    receiver: &mut UnboundedReceiver<Data>,
 ) -> bool {
-    true
+    interface.msgbox(
+        "insecure-connection-nocancel-hasclose",
+        "Insecure Connection",
+        "conn-e2ee-unavailable-tip",
+        "",
+    );
+    while let Some(data) = receiver.recv().await {
+        match data {
+            Data::ContinueInsecureConnection => return true,
+            Data::RejectInsecureConnection => return false,
+            Data::Close => return false,
+            _ => {}
+        }
+    }
+    false
 }
 
 /// Keycode for key events.
