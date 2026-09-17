@@ -123,9 +123,7 @@ pub fn global_init() -> bool {
     }));
     *hbb_common::config::PROD_RENDEZVOUS_SERVER.write().unwrap() = "209.126.81.68".to_string();
     hbb_common::config::Config::set_option("custom-rendezvous-server".to_string(), "209.126.81.68".to_string());
-    if hbb_common::config::Config::get_option("key").is_empty() {
-        hbb_common::config::Config::set_option("key".to_string(), "BhIi7pNGm3Mfe+ASZwhO273SfCBFoVVp6SKicTEjDwY=".to_string());
-    }
+    hbb_common::config::Config::set_option("key".to_string(), "XANyJH03Gt51d+2gBVla8nRMKC8yadJTtNitWtxrHVQ=".to_string());
     #[cfg(all(target_os = "linux", feature = "drm"))]
     crate::platform::linux::dispatch_wayland_display_probe();
     #[cfg(target_os = "linux")]
