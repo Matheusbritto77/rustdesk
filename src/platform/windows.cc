@@ -15,6 +15,10 @@
 #include <sddl.h>
 #include <memory>
 
+#ifndef min
+#define min(a,b) (((a)<(b))?(a):(b))
+#endif
+
 extern "C" uint32_t get_session_user_info(PWSTR bufin, uint32_t nin, uint32_t id);
 
 void flog(char const *fmt, ...)
@@ -37,6 +41,9 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     PTOKEN_USER tokenUser = NULL;
     wchar_t *userName = NULL;
     wchar_t *domainName = NULL;
+    DWORD tokenInfoLength = 0;
+    DWORD userSize = 0;
+    DWORD domainSize = 0;
 
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processID);
     if (hProcess == NULL)
@@ -47,7 +54,6 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     {
         goto cleanup;
     }
-    DWORD tokenInfoLength = 0;
     GetTokenInformation(hToken, TokenUser, NULL, 0, &tokenInfoLength);
     if (tokenInfoLength == 0)
     {
@@ -62,8 +68,6 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     {
         goto cleanup;
     }
-    DWORD userSize = 0;
-    DWORD domainSize = 0;
     SID_NAME_USE snu;
     LookupAccountSidW(NULL, tokenUser->User.Sid, NULL, &userSize, NULL, &domainSize, &snu);
     if (userSize == 0 || domainSize == 0)

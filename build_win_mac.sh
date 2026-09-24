@@ -19,22 +19,31 @@ fi
 
 # 3. Set environment and static C/C++ runtime linking flags
 export VCPKG_ROOT="${VCPKG_ROOT:-/Users/matheusbrito/vcpkg}"
-export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-static -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ -C link-arg=-Wl,-Bstatic"
+export VCPKG_TARGET_TRIPLET=x64-mingw-static
+export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-static -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ -C link-arg=-Wl,-Bstatic -L native=${VCPKG_ROOT}/installed/x64-mingw-static/lib"
 
 # Fix bindgen header search path when cross-compiling on macOS with MinGW
+export BINDGEN_EXTRA_CLANG_ARGS="--target=x86_64-w64-mingw32 -I${VCPKG_ROOT}/installed/x64-mingw-static/include"
 if [ -d "/opt/homebrew/opt/mingw-w64/toolchain-x86_64/x86_64-w64-mingw32/include" ]; then
-    export BINDGEN_EXTRA_CLANG_ARGS="--target=x86_64-w64-mingw32 -I/opt/homebrew/opt/mingw-w64/toolchain-x86_64/x86_64-w64-mingw32/include"
+    export BINDGEN_EXTRA_CLANG_ARGS="${BINDGEN_EXTRA_CLANG_ARGS} -I/opt/homebrew/opt/mingw-w64/toolchain-x86_64/x86_64-w64-mingw32/include"
 fi
 
-# 4. Build release binary
+# 4. Build release binary with inlined GUI resources
+echo "[+] Inlining Sciter GUI resources..."
+python3 res/inline-sciter.py
+
 echo "[+] Compiling Remora Windows release executable..."
-cargo build --target x86_64-pc-windows-gnu --release
+cargo build --target x86_64-pc-windows-gnu --release --features inline
 
 # 5. Prepare output bundle
 BUNDLE_DIR="target/release-win-bundle"
 mkdir -p "$BUNDLE_DIR"
 
-if [ -f "target/x86_64-pc-windows-gnu/release/remora.exe" ]; then
+if [ -f "target/x86_64-pc-windows-gnu/release/rustdesk.exe" ]; then
+    cp "target/x86_64-pc-windows-gnu/release/rustdesk.exe" "$BUNDLE_DIR/remora.exe"
+    cp "target/x86_64-pc-windows-gnu/release/rustdesk.exe" "$BUNDLE_DIR/rustdesk.exe"
+    echo "[+] Copied single-file executable to $BUNDLE_DIR/remora.exe"
+elif [ -f "target/x86_64-pc-windows-gnu/release/remora.exe" ]; then
     cp "target/x86_64-pc-windows-gnu/release/remora.exe" "$BUNDLE_DIR/remora.exe"
     echo "[+] Copied remora.exe to $BUNDLE_DIR/"
 fi

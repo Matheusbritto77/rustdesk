@@ -218,6 +218,7 @@ exclude = ["vdi/host"]
 # Patch libxdo-sys to use a stub implementation that doesn't require libxdo
 # This allows building and running on systems without libxdo installed (e.g., Wayland-only)
 [patch.crates-io]
+libsodium-sys = { path = "vendor/libsodium-sys-0.2.7" }
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 # Upstream reserves a frame's whole declared length as soon as its header is in, so a header alone
 # buys an allocation the size it names, bounded only by max_frame_size. This fork grows the read
@@ -252,6 +253,9 @@ tungstenite = { git = "https://github.com/rustdesk-org/tungstenite-rs", rev = "e
 webrtc = { git = "https://github.com/rustdesk-org/webrtc", rev = "49c89bd8d30e6e62e4c1a96cee38fdc11f79ef63" }
 webrtc-util = { git = "https://github.com/rustdesk-org/webrtc", rev = "49c89bd8d30e6e62e4c1a96cee38fdc11f79ef63" }
 webrtc-sctp = { git = "https://github.com/rustdesk-org/webrtc", rev = "49c89bd8d30e6e62e4c1a96cee38fdc11f79ef63" }
+
+[patch."https://github.com/rustdesk-org/machine-uid"]
+machine-uid = { path = "vendor/machine-uid" }
 
 [package.metadata.winres]
 LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."

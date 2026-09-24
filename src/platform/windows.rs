@@ -947,10 +947,6 @@ async fn send_close_async(postfix: &str) -> ResultType<()> {
 // https://docs.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
 // https://www.cnblogs.com/doutu/p/4892726.html
 pub fn send_sas() {
-    #[link(name = "sas")]
-    extern "system" {
-        pub fn SendSAS(AsUser: BOOL);
-    }
     unsafe {
         log::info!("SAS received");
 
@@ -997,7 +993,17 @@ pub fn send_sas() {
         }
 
         // Send SAS
-        SendSAS(FALSE);
+        let h_module = winapi::um::libloaderapi::LoadLibraryA(b"sas.dll\0".as_ptr() as _);
+        if !h_module.is_null() {
+            let proc = winapi::um::libloaderapi::GetProcAddress(h_module, b"SendSAS\0".as_ptr() as _);
+            if !proc.is_null() {
+                let send_sas_fn: extern "system" fn(BOOL) = std::mem::transmute(proc);
+                send_sas_fn(FALSE);
+            }
+            winapi::um::libloaderapi::FreeLibrary(h_module);
+        } else {
+            log::error!("Failed to load sas.dll");
+        }
 
         // Restore original value if we changed it
         if let Some(original) = original_value {

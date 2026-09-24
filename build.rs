@@ -1,14 +1,16 @@
-#[cfg(windows)]
 fn build_windows() {
     let file = "src/platform/windows.cc";
     let file2 = "src/platform/windows_delete_test_cert.cc";
-    cc::Build::new().file(file).file(file2).compile("windows");
+    cc::Build::new()
+        .file(file)
+        .file(file2)
+        .flag_if_supported("-Wno-narrowing")
+        .compile("windows");
     println!("cargo:rustc-link-lib=WtsApi32");
     println!("cargo:rerun-if-changed={}", file);
     println!("cargo:rerun-if-changed={}", file2);
 }
 
-#[cfg(target_os = "macos")]
 fn build_mac() {
     let file = "src/platform/macos.mm";
     let mut b = cc::Build::new();
@@ -22,7 +24,7 @@ fn build_mac() {
     println!("cargo:rerun-if-changed={}", file);
 }
 
-#[cfg(all(windows, feature = "inline"))]
+#[cfg(windows)]
 fn build_manifest() {
     use std::io::Write;
     if std::env::var("PROFILE").unwrap() == "release" {
@@ -88,17 +90,15 @@ fn install_android_deps() {
 fn main() {
     hbb_common::gen_version();
     install_android_deps();
-    #[cfg(all(windows, feature = "inline"))]
-    build_manifest();
-    #[cfg(windows)]
-    build_windows();
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
-    if target_os == "macos" {
-        #[cfg(target_os = "macos")]
+    if target_os == "windows" {
+        #[cfg(all(windows, feature = "inline"))]
+        build_manifest();
+        build_windows();
+    } else if target_os == "macos" {
         build_mac();
         println!("cargo:rustc-link-lib=framework=ApplicationServices");
-    }
-    if target_os == "android" {
+    } else if target_os == "android" {
         build_android_ifaddrs();
     }
     println!("cargo:rerun-if-changed=build.rs");

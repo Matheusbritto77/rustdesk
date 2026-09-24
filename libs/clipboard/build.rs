@@ -1,4 +1,3 @@
-#[cfg(target_os = "windows")]
 fn build_c_impl() {
     let mut build = cc::Build::new();
 
@@ -9,6 +8,8 @@ fn build_c_impl() {
         build.flag_if_supported("-Wno-return-type-c-linkage");
         build.flag_if_supported("-Wno-invalid-offsetof");
         build.flag_if_supported("-Wno-unused-parameter");
+        build.flag_if_supported("-Wno-int-conversion");
+        build.flag_if_supported("-Wno-incompatible-pointer-types");
 
         if build.get_compiler().is_like_msvc() {
             build.define("WIN32", "");
@@ -30,6 +31,9 @@ fn build_c_impl() {
 }
 
 fn main() {
-    #[cfg(target_os = "windows")]
-    build_c_impl();
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        build_c_impl();
+        println!("cargo:rustc-link-lib=uuid");
+        println!("cargo:rustc-link-lib=ole32");
+    }
 }
