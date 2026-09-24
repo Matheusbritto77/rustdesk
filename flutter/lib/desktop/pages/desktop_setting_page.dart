@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
@@ -54,6 +55,7 @@ enum SettingsTabKey {
   network,
   display,
   account,
+  privacyMode,
   printer,
   about,
 }
@@ -73,6 +75,7 @@ class DesktopSettingPage extends StatefulWidget {
       SettingsTabKey.network,
     if (!bind.isIncomingOnly()) SettingsTabKey.display,
     if (!bind.isDisableAccount()) SettingsTabKey.account,
+    SettingsTabKey.privacyMode,
     if (isWindows &&
         !bind.isDisableSettings() &&
         bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
@@ -204,6 +207,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           settingTabs.add(
               _TabInfo(tab, 'Account', Icons.person_outline, Icons.person));
           break;
+        case SettingsTabKey.privacyMode:
+          settingTabs.add(_TabInfo(
+              tab, 'Modo de Privacidade', Icons.security_outlined, Icons.security));
+          break;
         case SettingsTabKey.printer:
           settingTabs
               .add(_TabInfo(tab, 'Printer', Icons.print_outlined, Icons.print));
@@ -235,6 +242,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           break;
         case SettingsTabKey.account:
           children.add(const _Account());
+          break;
+        case SettingsTabKey.privacyMode:
+          children.add(const _PrivacyMode());
           break;
         case SettingsTabKey.printer:
           children.add(const _Printer());
